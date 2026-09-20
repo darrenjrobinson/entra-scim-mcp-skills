@@ -1,0 +1,23 @@
+{
+  "mcpServers": {
+    "entra-scim-mock": {
+      "command": "npx",
+      "args": ["-y", "entra-scim-mcp@0.2.1"],
+      "env": {
+        "ENTRA_SCIM_BASE_URL": "http://127.0.0.1:8990",
+        "ENTRA_SCIM_STATIC_TOKEN": "dev-token"
+      }
+    },
+    "entra-scim-rehearsal": {
+      "command": "npx",
+      "args": ["-y", "entra-scim-mcp@0.2.1"],
+      "env": {
+        "ENTRA_SCIM_DRY_RUN": "1"
+      }
+    },
+    "entra-scim-live": {
+      "command": "node",
+      "args": ["scripts/mcp-live.mjs"]
+    }
+  }
+}

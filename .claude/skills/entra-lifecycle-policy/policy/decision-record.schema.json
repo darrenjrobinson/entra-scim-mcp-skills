@@ -1,0 +1,217 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/darrenjrobinson/entra-scim-mcp-skills/policy/decision-record.schema.json",
+  "title": "entra-lifecycle-guardrails decision record",
+  "description": "Structured evidence emitted by identity-change-auditor at the end of every guardrail or orchestrator run, including blocked and rehearsal runs.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "recordVersion", "correlationId", "supersedes", "skill", "skillVersion", "policyId", "policyVersion", "event", "host",
+    "dryRun", "startedAt", "completedAt", "clockSource", "source", "target", "decision", "outcome", "riskLevel",
+    "policyChecks", "approvals", "plannedActions", "executedActions", "skippedActions", "verificationFindings",
+    "residualRisk", "toolCalls", "nextSteps", "summary"
+  ],
+  "properties": {
+    "recordVersion": { "type": "string", "const": "1.0" },
+    "correlationId": { "type": "string", "pattern": "^elg-[A-Za-z0-9-]{4,40}-[a-z0-9]{6}$" },
+    "supersedes": { "type": ["string", "null"], "description": "correlationId of the earlier run this one replaces (a re-run after a blocked request), else null." },
+    "skill": { "type": "string", "enum": ["entitlement-guardrail", "identity-change-auditor", "joiner-orchestrator", "mover-orchestrator", "leaver-orchestrator"] },
+    "skillVersion": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "policyId": { "type": "string" },
+    "policyVersion": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "event": { "type": "string", "enum": ["joiner", "mover", "leaver", "entitlement-evaluation"] },
+    "host": { "type": "string", "enum": ["mcpjam", "claude-code", "other"] },
+    "dryRun": { "type": "boolean" },
+    "startedAt": { "$ref": "#/$defs/NullableTimestamp" },
+    "completedAt": { "$ref": "#/$defs/NullableTimestamp" },
+    "clockSource": { "type": "string", "enum": ["resourceMeta", "none"], "description": "resourceMeta = timestamps copied from meta.created / meta.lastModified in tool results; none = no tenant interaction, timestamps null." },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["system", "recordId"],
+      "properties": { "system": { "type": "string" }, "recordId": { "type": "string" } }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["userName", "id", "displayName"],
+      "properties": {
+        "userName": { "type": "string" },
+        "id": { "type": ["string", "null"], "description": "Entra object id when resolved or created this run, else null." },
+        "displayName": { "type": "string" }
+      }
+    },
+    "decision": { "$ref": "#/$defs/Decision" },
+    "outcome": { "$ref": "#/$defs/Outcome" },
+    "riskLevel": { "$ref": "#/$defs/RiskLevel" },
+    "policyChecks": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/PolicyCheck" } },
+    "approvals": { "type": "array", "items": { "$ref": "#/$defs/Approval" } },
+    "plannedActions": { "type": "array", "items": { "$ref": "#/$defs/PlannedAction" } },
+    "executedActions": { "type": "array", "items": { "$ref": "#/$defs/ExecutedAction" } },
+    "skippedActions": { "type": "array", "items": { "$ref": "#/$defs/SkippedAction" } },
+    "verificationFindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["proved", "notVerifiable"],
+      "properties": {
+        "proved": { "type": "array", "items": { "$ref": "#/$defs/VerificationFinding" } },
+        "notVerifiable": { "type": "array", "items": { "type": "string" }, "description": "Things the SCIM read surface cannot prove (sessions, licences, nested access, app roles, PIM, workflow triggers)." }
+      }
+    },
+    "residualRisk": { "type": "array", "items": { "$ref": "#/$defs/ResidualRisk" } },
+    "toolCalls": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["count", "budget", "byTool"],
+      "description": "Invariant: count == sum of byTool values. Every MCP tool call counts, reads included.",
+      "properties": {
+        "count": { "type": "integer", "minimum": 0 },
+        "budget": { "type": "integer", "minimum": 0 },
+        "byTool": {
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/ToolName" },
+          "additionalProperties": { "type": "integer", "minimum": 1 }
+        }
+      }
+    },
+    "nextSteps": { "type": "array", "items": { "type": "string" } },
+    "summary": { "type": "string", "minLength": 1 },
+    "details": {
+      "type": "object",
+      "description": "Skill-specific extras: guardrail groupResults[], mover before/after, leaver mode/retained/residual.",
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "NullableTimestamp": { "type": ["string", "null"], "format": "date-time" },
+    "Decision": { "type": "string", "enum": ["allow", "allow_with_approval", "deny", "require_manual_review"] },
+    "Outcome": { "type": "string", "enum": ["completed", "blocked", "awaiting_approval", "partial_failure", "not_executed", "rehearsal"] },
+    "RiskLevel": { "type": "string", "enum": ["low", "medium", "high"] },
+    "CheckResult": { "type": "string", "enum": ["pass", "fail", "warn", "needs_approval", "manual_review", "skipped"] },
+    "ReasonCode": {
+      "type": "string",
+      "enum": [
+        "policy_unavailable", "unknown_source", "missing_required_attribute", "csa_missing", "csa_condition_failed",
+        "group_not_in_catalog", "group_not_found_in_tenant", "duplicate_group_display_name", "not_allowed_at_joiner",
+        "privileged_not_allowed_at_joiner", "breakglass_only", "exceeds_profile_risk", "sod_conflict", "approval_required",
+        "approval_missing", "approval_invalid", "approval_scope_mismatch", "operator_confirmation_missing",
+        "ambiguous_identity", "already_provisioned", "unresolved_manager", "source_conflict", "cost_budget_exceeded",
+        "partial_failure", "verification_failed", "dry_run_active", "delete_blocked_legal_hold"
+      ]
+    },
+    "ToolName": {
+      "type": "string",
+      "enum": [
+        "get_service_provider_config", "list_resource_types", "list_schemas",
+        "list_users", "get_user", "provision_user", "update_user", "deprovision_user", "update_user_lifecycle",
+        "get_user_custom_security_attributes", "update_user_custom_security_attributes",
+        "list_groups", "get_group", "create_group", "update_group", "delete_group", "add_group_members", "remove_group_member"
+      ]
+    },
+    "PolicyCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "rule", "result", "evidence"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^CHK-[0-9]{2,}$" },
+        "rule": { "type": "string", "minLength": 1, "description": "Dotted policy path, e.g. sodRules[SOD-FIN-001] or requiredJoinerAttributes.customSecurityAttributes[REQ-CSA-03]." },
+        "subject": { "type": "string" },
+        "input": { "type": "string", "description": "The normalised input value the rule was evaluated against." },
+        "evidence": { "type": "string", "minLength": 1, "description": "Cites the numbered tool call (call #n), or 'source record' / 'policy'." },
+        "result": { "$ref": "#/$defs/CheckResult" },
+        "reasonCode": { "$ref": "#/$defs/ReasonCode" }
+      }
+    },
+    "Approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ref", "scope", "approver", "sourceRecordId", "valid", "used"],
+      "properties": {
+        "ref": { "type": "string" },
+        "scope": { "type": "string" },
+        "approver": { "type": "string" },
+        "sourceRecordId": { "type": "string" },
+        "grantedAt": { "$ref": "#/$defs/NullableTimestamp" },
+        "valid": { "type": "boolean" },
+        "used": { "type": "boolean" },
+        "invalidReason": { "type": "string" }
+      }
+    },
+    "PlannedAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["seq", "tool", "target", "argsSummary", "purpose", "policyBasis", "status"],
+      "properties": {
+        "seq": { "type": "integer", "minimum": 1 },
+        "tool": { "$ref": "#/$defs/ToolName" },
+        "target": { "type": "string" },
+        "argsSummary": { "type": "string", "description": "Redacted. Never contains a password." },
+        "purpose": { "type": "string" },
+        "policyBasis": { "type": "array", "items": { "type": "string" } },
+        "status": { "type": "string", "enum": ["planned", "executed", "skipped", "not_attempted"] }
+      }
+    },
+    "ExecutedAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["seq", "phase", "tool", "status", "at", "resultSummary"],
+      "properties": {
+        "seq": { "type": "integer", "minimum": 0, "description": "0 for reads; otherwise the plannedActions seq it fulfilled." },
+        "call": { "type": "integer", "minimum": 1, "description": "Sequential tool-call number in this run (the number cited in evidence)." },
+        "phase": { "type": "string", "enum": ["resolve", "read", "execute", "verify"] },
+        "tool": { "$ref": "#/$defs/ToolName" },
+        "status": { "type": "string", "enum": ["ok", "error", "dryRun"] },
+        "at": { "$ref": "#/$defs/NullableTimestamp" },
+        "resultSummary": { "type": "string" },
+        "error": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": ["error"],
+          "properties": {
+            "error": { "type": "string" },
+            "status": { "anyOf": [ { "type": "integer" }, { "type": "string" } ] },
+            "scimType": { "type": "string" },
+            "detail": { "type": "string" }
+          }
+        }
+      }
+    },
+    "SkippedAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["seq", "tool", "reason", "reasonCode"],
+      "properties": {
+        "seq": { "type": ["integer", "null"] },
+        "tool": { "$ref": "#/$defs/ToolName" },
+        "target": { "type": "string" },
+        "group": { "type": "string" },
+        "reason": { "type": "string" },
+        "reasonCode": { "$ref": "#/$defs/ReasonCode" }
+      }
+    },
+    "VerificationFinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["check", "tool", "expected", "observed", "result"],
+      "properties": {
+        "check": { "type": "string" },
+        "tool": { "$ref": "#/$defs/ToolName" },
+        "expected": { "type": "string" },
+        "observed": { "type": "string" },
+        "result": { "$ref": "#/$defs/CheckResult" }
+      }
+    },
+    "ResidualRisk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "description", "severity", "owner", "dueBy"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^RR-[0-9]{2}$" },
+        "description": { "type": "string" },
+        "severity": { "$ref": "#/$defs/RiskLevel" },
+        "owner": { "type": "string" },
+        "dueBy": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

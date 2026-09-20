@@ -1,0 +1,446 @@
+{
+  "recordVersion": "1.0",
+  "correlationId": "elg-WD-000123-ej1ibh",
+  "supersedes": null,
+  "skill": "joiner-orchestrator",
+  "skillVersion": "0.1.0",
+  "policyId": "contoso-lifecycle-policy",
+  "policyVersion": "1.0.0",
+  "event": "joiner",
+  "host": "claude-code",
+  "dryRun": false,
+  "startedAt": null,
+  "completedAt": null,
+  "clockSource": "none",
+  "source": {
+    "system": "workday",
+    "recordId": "WD-000123"
+  },
+  "target": {
+    "userName": "priya.natarajan@contoso.local",
+    "id": null,
+    "displayName": "Priya Natarajan"
+  },
+  "decision": "deny",
+  "outcome": "blocked",
+  "riskLevel": "high",
+  "policyChecks": [
+    {
+      "id": "CHK-01",
+      "rule": "policyVersion",
+      "input": "contoso-lifecycle-policy 1.0.0",
+      "evidence": "entra-lifecycle-policy skill, policy/lifecycle-policy.json; major version 1",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-02",
+      "rule": "authoritativeSources[id=workday]",
+      "input": "sourceSystem=workday; sourceRecordId=WD-000123; eventType=joiner; ContractType=Employee",
+      "evidence": "source record: id matches, WD-000123 matches ^WD-[0-9]{6}$, joiner in events, Employee in allowedContractTypes",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-03",
+      "rule": "requiredJoinerAttributes.core",
+      "input": "REQ-01..REQ-08",
+      "evidence": "source record: sourceRecordId, givenName, familyName present; employeeNumber 100482 matches ^[0-9]{6}$; department Finance in list; userType Member in list; managerUserName patti.fernandez@contoso.local matches ^[^@\\s]+@contoso\\.local$; effectiveDate 2026-09-21 matches ^\\d{4}-\\d{2}-\\d{2}$",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-04",
+      "rule": "requiredJoinerAttributes.customSecurityAttributes[REQ-CSA-01]",
+      "subject": "csa.requested.Employment.ContractType",
+      "input": "Employee",
+      "evidence": "source record; string; in allowedValues",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-05",
+      "rule": "requiredJoinerAttributes.customSecurityAttributes[REQ-CSA-02]",
+      "subject": "csa.requested.Employment.CostCenter",
+      "input": "FIN-100",
+      "evidence": "source record; string; matches ^(FIN|ENG|OPS|HR)-[0-9]{3}$",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-06",
+      "rule": "requiredJoinerAttributes.customSecurityAttributes[REQ-CSA-03]",
+      "subject": "csa.requested.Compliance.DataClassification",
+      "input": "(absent)",
+      "evidence": "source record: customSecurityAttributes.Compliance is {} and has no DataClassification; required=true; onMissing=deny",
+      "result": "fail",
+      "reasonCode": "missing_required_attribute"
+    },
+    {
+      "id": "CHK-07",
+      "rule": "requiredJoinerAttributes.customSecurityAttributes[REQ-CSA-04]",
+      "subject": "csa.requested.Compliance.LegalHold",
+      "input": "(absent)",
+      "evidence": "policy: required=false, default=false; would be written as boolean false on a valid run",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-08",
+      "rule": "approvedBaselineProfiles.profiles.Employee",
+      "input": "keyedBy Employment.ContractType=Employee; department=Finance",
+      "evidence": "policy: baseGroups [All Employees]; departmentGroups.Finance [SG-Finance-Users]; maxGroupRiskLevelAtJoiner medium",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-09",
+      "rule": "namingStandards.userName",
+      "subject": "priya.natarajan@contoso.local",
+      "input": "givenName=Priya; familyName=Natarajan; primaryDomain=contoso.local",
+      "evidence": "derived from template {givenName}.{familyName}@{primaryDomain}, lowercased, no diacritics; matches ^[a-z0-9]+(?:[.-][a-z0-9]+)*@contoso\\.local$; mailNickname priya.natarajan; displayName Priya Natarajan; collision precheck not reached",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-10",
+      "rule": "groupCatalog",
+      "subject": "All Employees, SG-Finance-Users",
+      "input": "profile baseGroups + departmentGroups.Finance",
+      "evidence": "policy: All Employees baseline/low, SG-Finance-Users business/low; allowedAtJoiner=true; requiresCsa empty; approvalRequired=false; decisionByRiskLevel.low=allow",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-11",
+      "rule": "groupCatalog[SG-Finance-AP-Requestors]",
+      "subject": "SG-Finance-AP-Requestors",
+      "input": "requested",
+      "evidence": "policy: business/low, allowedAtJoiner=true, no requiresCsa, approvalRequired=false; SoD evaluated in CHK-12",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-12",
+      "rule": "sodRules[SOD-FIN-001]",
+      "subject": "SG-Finance-AP-Approvers",
+      "input": "resulting set = {All Employees, SG-Finance-Users, SG-Finance-AP-Requestors, SG-Finance-AP-Approvers, SG-Finance-Treasury-Payments}",
+      "evidence": "policy: SG-Finance-AP-Requestors and SG-Finance-AP-Approvers both in resulting set; enforcement=deny; sodEvaluation.bothRequestedRule=denyHigherRiskThenLaterInRequest selects SG-Finance-AP-Approvers (medium > low)",
+      "result": "fail",
+      "reasonCode": "sod_conflict"
+    },
+    {
+      "id": "CHK-13",
+      "rule": "groupCatalog[SG-Finance-Treasury-Payments].requiresCsa",
+      "subject": "csa.effective.Employment.CostCenter",
+      "input": "FIN-100",
+      "evidence": "policy: startsWith FIN- is true",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-14",
+      "rule": "groupCatalog[SG-Finance-Treasury-Payments].approvalRequired",
+      "subject": "SG-Finance-Treasury-Payments",
+      "input": "CHG-40012 scope group:SG-Finance-Treasury-Payments",
+      "evidence": "source record approvals[0]: matches ^(CHG|REQ|INC)-[0-9]{5,}$, all requiredFields present, sourceRecordId WD-000123 matches, scope matches; would satisfy on re-run",
+      "result": "needs_approval",
+      "reasonCode": "approval_required"
+    },
+    {
+      "id": "CHK-15",
+      "rule": "privilegedGroups.rules.breakglassOnlyGroups",
+      "subject": "SG-Entra-TenantAdmins",
+      "input": "requested at joiner",
+      "evidence": "policy: SG-Entra-TenantAdmins in breakglassOnlyGroups; classification=privileged; allowedAtJoiner=false",
+      "result": "fail",
+      "reasonCode": "breakglass_only"
+    },
+    {
+      "id": "CHK-16",
+      "rule": "costThresholds.maxToolCallsPerRun.joiner-orchestrator",
+      "input": "0 of 20",
+      "evidence": "run blocked at Step 1 before any tool call",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-17",
+      "rule": "evaluation.decisionPrecedence",
+      "input": "deny (CHK-06, CHK-12, CHK-15)",
+      "evidence": "worst result across rows; riskModel.aggregate=max of RS-02 (privileged requested), RS-03 (SoD fired), RS-04 (missing required attribute) = high",
+      "result": "fail",
+      "reasonCode": "missing_required_attribute"
+    }
+  ],
+  "approvals": [
+    {
+      "ref": "CHG-40012",
+      "scope": "group:SG-Finance-Treasury-Payments",
+      "approver": "treasury.lead@contoso.local",
+      "sourceRecordId": "WD-000123",
+      "grantedAt": "2026-09-19T03:10:00Z",
+      "valid": true,
+      "used": false
+    }
+  ],
+  "plannedActions": [
+    {
+      "seq": 1,
+      "tool": "provision_user",
+      "target": "priya.natarajan@contoso.local",
+      "argsSummary": "userName=priya.natarajan@contoso.local, mailNickname=priya.natarajan, displayName=Priya Natarajan, givenName=Priya, familyName=Natarajan, active=false, externalId=WD-000123, userType=Member, emails=[work primary priya.natarajan@contoso.local], department=Finance, employeeNumber=100482, managerId=<resolved at run time>, password=<generated, not shown>",
+      "purpose": "create identity inactive",
+      "policyBasis": [
+        "namingStandards",
+        "joinerRules.createInactiveUntilVerified",
+        "joinerRules.externalIdFrom"
+      ],
+      "status": "not_attempted"
+    },
+    {
+      "seq": 2,
+      "tool": "update_user_custom_security_attributes",
+      "target": "<new user id>",
+      "argsSummary": "replace Employment.ContractType=Employee, Employment.CostCenter=FIN-100, Compliance.DataClassification=<missing>, Compliance.LegalHold=false (default)",
+      "purpose": "mandatory CSAs",
+      "policyBasis": [
+        "requiredJoinerAttributes.customSecurityAttributes"
+      ],
+      "status": "not_attempted"
+    },
+    {
+      "seq": 3,
+      "tool": "add_group_members",
+      "target": "All Employees",
+      "argsSummary": "memberIds=[<new user id>]",
+      "purpose": "baseline profile",
+      "policyBasis": [
+        "approvedBaselineProfiles.profiles.Employee.baseGroups"
+      ],
+      "status": "not_attempted"
+    },
+    {
+      "seq": 4,
+      "tool": "add_group_members",
+      "target": "SG-Finance-Users",
+      "argsSummary": "memberIds=[<new user id>]",
+      "purpose": "department baseline",
+      "policyBasis": [
+        "approvedBaselineProfiles.profiles.Employee.departmentGroups.Finance"
+      ],
+      "status": "not_attempted"
+    },
+    {
+      "seq": 5,
+      "tool": "add_group_members",
+      "target": "SG-Finance-AP-Requestors",
+      "argsSummary": "memberIds=[<new user id>]",
+      "purpose": "requested, allow",
+      "policyBasis": [
+        "groupCatalog[SG-Finance-AP-Requestors]"
+      ],
+      "status": "not_attempted"
+    },
+    {
+      "seq": 6,
+      "tool": "add_group_members",
+      "target": "SG-Finance-Treasury-Payments",
+      "argsSummary": "memberIds=[<new user id>]",
+      "purpose": "requested, allow_with_approval CHG-40012",
+      "policyBasis": [
+        "groupCatalog[SG-Finance-Treasury-Payments].approvalRequired",
+        "approvalThresholds.approvalRef"
+      ],
+      "status": "not_attempted"
+    },
+    {
+      "seq": 7,
+      "tool": "get_user",
+      "target": "<new user id>",
+      "argsSummary": "full read",
+      "purpose": "verify attributes",
+      "policyBasis": [
+        "auditRequirements.verificationRequiredBeforeCompleted"
+      ],
+      "status": "not_attempted"
+    },
+    {
+      "seq": 8,
+      "tool": "get_user_custom_security_attributes",
+      "target": "<new user id>",
+      "argsSummary": "attributeSets=[Employment, Compliance]",
+      "purpose": "verify CSAs",
+      "policyBasis": [
+        "auditRequirements.verificationRequiredBeforeCompleted"
+      ],
+      "status": "not_attempted"
+    },
+    {
+      "seq": 9,
+      "tool": "list_groups",
+      "target": "<new user id>",
+      "argsSummary": "filter members.value eq <new user id>; attributes id,displayName",
+      "purpose": "verify memberships",
+      "policyBasis": [
+        "auditRequirements.verificationRequiredBeforeCompleted"
+      ],
+      "status": "not_attempted"
+    },
+    {
+      "seq": 10,
+      "tool": "update_user",
+      "target": "<new user id>",
+      "argsSummary": "replace active=true",
+      "purpose": "activate after verification",
+      "policyBasis": [
+        "joinerRules.sequence"
+      ],
+      "status": "not_attempted"
+    }
+  ],
+  "executedActions": [],
+  "skippedActions": [
+    {
+      "seq": 1,
+      "tool": "provision_user",
+      "target": "priya.natarajan@contoso.local",
+      "reason": "run blocked by CHK-06",
+      "reasonCode": "missing_required_attribute"
+    },
+    {
+      "seq": 2,
+      "tool": "update_user_custom_security_attributes",
+      "reason": "run blocked by CHK-06",
+      "reasonCode": "missing_required_attribute"
+    },
+    {
+      "seq": 3,
+      "tool": "add_group_members",
+      "group": "All Employees",
+      "reason": "run blocked by CHK-06",
+      "reasonCode": "missing_required_attribute"
+    },
+    {
+      "seq": 4,
+      "tool": "add_group_members",
+      "group": "SG-Finance-Users",
+      "reason": "run blocked by CHK-06",
+      "reasonCode": "missing_required_attribute"
+    },
+    {
+      "seq": 5,
+      "tool": "add_group_members",
+      "group": "SG-Finance-AP-Requestors",
+      "reason": "run blocked by CHK-06",
+      "reasonCode": "missing_required_attribute"
+    },
+    {
+      "seq": 6,
+      "tool": "add_group_members",
+      "group": "SG-Finance-Treasury-Payments",
+      "reason": "run blocked by CHK-06; approval CHG-40012 is valid and would be used on re-run",
+      "reasonCode": "missing_required_attribute"
+    },
+    {
+      "seq": null,
+      "tool": "add_group_members",
+      "group": "SG-Finance-AP-Approvers",
+      "reason": "denied by SOD-FIN-001 (conflicts with requested SG-Finance-AP-Requestors; higher-risk member denied per sodEvaluation.bothRequestedRule)",
+      "reasonCode": "sod_conflict"
+    },
+    {
+      "seq": null,
+      "tool": "add_group_members",
+      "group": "SG-Entra-TenantAdmins",
+      "reason": "breakglass-only privileged group; never assignable at joiner",
+      "reasonCode": "breakglass_only"
+    }
+  ],
+  "verificationFindings": {
+    "proved": [],
+    "notVerifiable": []
+  },
+  "residualRisk": [
+    {
+      "id": "RR-01",
+      "description": "No identity created. Onboarding for WD-000123 is delayed until Workday supplies Compliance.DataClassification; effective date is 2026-09-21.",
+      "severity": "medium",
+      "owner": "hr-data",
+      "dueBy": "2026-09-21"
+    },
+    {
+      "id": "RR-02",
+      "description": "SG-Finance-AP-Approvers will stay denied on re-run while SG-Finance-AP-Requestors is also requested (SOD-FIN-001). The requester must drop one of the two.",
+      "severity": "low",
+      "owner": "finance-systems",
+      "dueBy": null
+    },
+    {
+      "id": "RR-03",
+      "description": "SG-Entra-TenantAdmins was requested for a new hire. Review the request source; this group is breakglass-only and never assignable by lifecycle automation.",
+      "severity": "medium",
+      "owner": "identity-ops",
+      "dueBy": null
+    }
+  ],
+  "toolCalls": {
+    "count": 0,
+    "budget": 20,
+    "byTool": {}
+  },
+  "nextSteps": [
+    "Supply a corrected record with Compliance.DataClassification in [Public, Internal, Confidential, Restricted], same sourceRecordId WD-000123.",
+    "Drop SG-Finance-AP-Approvers or SG-Finance-AP-Requestors from requestedGroups; drop SG-Entra-TenantAdmins.",
+    "Re-run joiner-orchestrator; it will resolve all ids afresh, reuse CHG-40012 for SG-Finance-Treasury-Payments, and set supersedes=elg-WD-000123-ej1ibh."
+  ],
+  "summary": "Nothing changed: no identity was created for Priya Natarajan (priya.natarajan@contoso.local) and no ids were resolved. The Workday joiner record WD-000123 triggered the run and passed the source, core-attribute, profile and naming checks. It was blocked by CHK-06 because the mandatory Custom Security Attribute Compliance.DataClassification (REQ-CSA-03) is absent, and of the four requested groups SG-Finance-AP-Requestors is allowed, SG-Finance-AP-Approvers is denied by SOD-FIN-001, SG-Finance-Treasury-Payments needs approval and the supplied CHG-40012 is valid, and SG-Entra-TenantAdmins is denied as breakglass-only. The baseline groups All Employees and SG-Finance-Users, the CSAs and the account itself were not attempted, and the approval CHG-40012 was not used. HR data must supply the missing classification before the 2026-09-21 start date, finance-systems must drop one of the two AP groups, and identity-ops should review who requested tenant admin for a new hire.",
+  "details": {
+    "groupResults": [
+      {
+        "displayName": "All Employees",
+        "id": null,
+        "result": "allow",
+        "reasonCodes": [],
+        "ruleIds": [],
+        "approvalScopeNeeded": null
+      },
+      {
+        "displayName": "SG-Finance-Users",
+        "id": null,
+        "result": "allow",
+        "reasonCodes": [],
+        "ruleIds": [],
+        "approvalScopeNeeded": null
+      },
+      {
+        "displayName": "SG-Finance-AP-Requestors",
+        "id": null,
+        "result": "allow",
+        "reasonCodes": [],
+        "ruleIds": [],
+        "approvalScopeNeeded": null
+      },
+      {
+        "displayName": "SG-Finance-AP-Approvers",
+        "id": null,
+        "result": "deny",
+        "reasonCodes": [
+          "sod_conflict"
+        ],
+        "ruleIds": [
+          "SOD-FIN-001"
+        ],
+        "approvalScopeNeeded": null
+      },
+      {
+        "displayName": "SG-Finance-Treasury-Payments",
+        "id": null,
+        "result": "allow_with_approval",
+        "reasonCodes": [
+          "approval_required"
+        ],
+        "ruleIds": [],
+        "approvalScopeNeeded": "group:SG-Finance-Treasury-Payments"
+      },
+      {
+        "displayName": "SG-Entra-TenantAdmins",
+        "id": null,
+        "result": "deny",
+        "reasonCodes": [
+          "breakglass_only"
+        ],
+        "ruleIds": [],
+        "approvalScopeNeeded": null
+      }
+    ]
+  }
+}

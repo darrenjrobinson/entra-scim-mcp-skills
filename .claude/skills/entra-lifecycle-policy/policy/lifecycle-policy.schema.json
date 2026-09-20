@@ -1,0 +1,580 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/darrenjrobinson/entra-scim-mcp-skills/policy/lifecycle-policy.schema.json",
+  "title": "entra-lifecycle-guardrails tenant policy",
+  "description": "Shared tenant lifecycle policy read by every entra-lifecycle-guardrails skill. Every rule is a set-membership, exact, prefix or regex check so an LLM can evaluate it without code.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "policyId", "policyVersion", "tenant", "evaluation", "customSecurityAttributes",
+    "authoritativeSources", "requiredJoinerAttributes", "approvedBaselineProfiles", "groupCatalog",
+    "privilegedGroups", "sodRules", "sodEvaluation", "riskModel", "approvalThresholds", "joinerRules",
+    "moverRules", "offboardingOrder", "retainedAccessRules", "namingStandards", "costThresholds",
+    "auditRequirements"
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "policyId": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+    "policyVersion": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "effectiveFrom": { "type": "string", "format": "date" },
+    "notes": { "$ref": "#/$defs/Notes" },
+    "tenant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["displayName", "primaryDomain", "mcpServer"],
+      "properties": {
+        "displayName": { "type": "string", "minLength": 1 },
+        "primaryDomain": { "type": "string", "pattern": "^[a-z0-9.-]+$" },
+        "mcpServer": { "type": "string", "const": "entra-scim-mcp" },
+        "notes": { "$ref": "#/$defs/Notes" }
+      }
+    },
+    "evaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stringComparison", "exactMatchSubjectPrefixes", "conditionCombination", "operators", "decisionPrecedence", "riskOrder"],
+      "properties": {
+        "stringComparison": { "type": "string", "enum": ["caseInsensitive", "caseSensitive"] },
+        "exactMatchSubjectPrefixes": { "type": "array", "items": { "type": "string" } },
+        "conditionCombination": { "type": "string", "const": "all" },
+        "operators": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/Operator" } },
+        "decisionPrecedence": { "type": "array", "minItems": 4, "maxItems": 4, "uniqueItems": true, "items": { "$ref": "#/$defs/Decision" } },
+        "riskOrder": { "type": "array", "minItems": 3, "maxItems": 3, "uniqueItems": true, "items": { "$ref": "#/$defs/RiskLevel" } },
+        "notes": { "$ref": "#/$defs/Notes" }
+      }
+    },
+    "customSecurityAttributes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attributeSets", "pathPrefix", "readTool", "writeTool", "trustOnlyDedicatedRead"],
+      "properties": {
+        "attributeSets": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+        "pathPrefix": { "type": "string", "const": "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:CustomSecurityAttributes" },
+        "readTool": { "type": "string", "const": "get_user_custom_security_attributes" },
+        "writeTool": { "type": "string", "const": "update_user_custom_security_attributes" },
+        "trustOnlyDedicatedRead": { "type": "boolean", "const": true },
+        "notes": { "$ref": "#/$defs/Notes" }
+      }
+    },
+    "authoritativeSources": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/AuthoritativeSource" } },
+    "requiredJoinerAttributes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["core", "customSecurityAttributes", "onMissing", "managerMustResolve", "managerMustBeActive"],
+      "properties": {
+        "core": { "type": "array", "items": { "$ref": "#/$defs/RequiredCoreAttribute" } },
+        "customSecurityAttributes": { "type": "array", "items": { "$ref": "#/$defs/RequiredCsaAttribute" } },
+        "onMissing": { "$ref": "#/$defs/Decision" },
+        "managerMustResolve": { "type": "boolean" },
+        "managerMustBeActive": { "type": "string", "enum": ["warn", "deny", "ignore"] },
+        "notes": { "$ref": "#/$defs/Notes" }
+      }
+    },
+    "approvedBaselineProfiles": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["keyedBy", "profiles", "onNoProfile"],
+      "properties": {
+        "keyedBy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["set", "attribute"],
+          "properties": { "set": { "type": "string" }, "attribute": { "type": "string" } }
+        },
+        "profiles": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["baseGroups", "departmentGroups", "maxGroupRiskLevelAtJoiner"],
+            "properties": {
+              "baseGroups": { "type": "array", "items": { "$ref": "#/$defs/GroupName" } },
+              "departmentGroups": { "type": "object", "additionalProperties": { "type": "array", "items": { "$ref": "#/$defs/GroupName" } } },
+              "maxGroupRiskLevelAtJoiner": { "$ref": "#/$defs/RiskLevel" },
+              "notes": { "$ref": "#/$defs/Notes" }
+            }
+          }
+        },
+        "onNoProfile": { "$ref": "#/$defs/Decision" },
+        "notes": { "$ref": "#/$defs/Notes" }
+      }
+    },
+    "groupCatalog": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/GroupCatalogEntry" } },
+    "privilegedGroups": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["displayNames", "treatAsPrivilegedIf", "rules"],
+      "properties": {
+        "displayNames": { "type": "array", "items": { "$ref": "#/$defs/GroupName" } },
+        "treatAsPrivilegedIf": { "type": "string", "enum": ["inDisplayNamesOrClassificationPrivileged", "inDisplayNamesOnly"] },
+        "rules": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["allowedAtJoiner", "approvalRequired", "minimumRiskLevel", "breakglassOnlyGroups"],
+          "properties": {
+            "allowedAtJoiner": { "type": "boolean" },
+            "approvalRequired": { "type": "boolean" },
+            "minimumRiskLevel": { "$ref": "#/$defs/RiskLevel" },
+            "breakglassOnlyGroups": { "type": "array", "items": { "$ref": "#/$defs/GroupName" } },
+            "notes": { "$ref": "#/$defs/Notes" }
+          }
+        },
+        "notes": { "$ref": "#/$defs/Notes" }
+      }
+    },
+    "sodRules": { "type": "array", "items": { "$ref": "#/$defs/SodRule" } },
+    "sodEvaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["resultingSet", "firesWhen", "bothRequestedRule", "preExistingOnlyConflict"],
+      "properties": {
+        "resultingSet": { "type": "string", "const": "(currentMemberships - plannedRemovals) + plannedAdds" },
+        "firesWhen": { "type": "string", "const": "two or more conflictingGroups are in resultingSet" },
+        "bothRequestedRule": { "type": "string", "enum": ["denyHigherRiskThenLaterInRequest", "denyAllRequested"] },
+        "preExistingOnlyConflict": { "type": "string", "enum": ["warn_and_residual_risk", "deny"] },
+        "notes": { "$ref": "#/$defs/Notes" }
+      }
+    },
+    "riskModel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["aggregate", "signals"],
+      "properties": {
+        "aggregate": { "type": "string", "const": "max" },
+        "signals": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "event", "signal", "riskLevel"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^RS-[0-9]{2}$" },
+              "event": { "type": "string", "enum": ["any", "joiner", "mover", "leaver"] },
+              "signal": { "type": "string", "minLength": 1 },
+              "riskLevel": { "$ref": "#/$defs/RiskLevelOrCatalog" },
+              "notes": { "$ref": "#/$defs/Notes" }
+            }
+          }
+        },
+        "notes": { "$ref": "#/$defs/Notes" }
+      }
+    },
+    "approvalThresholds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["approvalRef", "approvalScopes", "decisionByRiskLevel", "operatorConfirmRequired", "operatorConfirmPhrase", "groupDenyHandling", "escalations"],
+      "properties": {
+        "approvalRef": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["pattern", "example", "requiredFields", "sourceRecordIdMustMatch", "mustBeSuppliedByOperatorOrRecord"],
+          "properties": {
+            "pattern": { "type": "string", "format": "regex" },
+            "example": { "type": "string" },
+            "requiredFields": { "type": "array", "items": { "type": "string", "enum": ["ref", "scope", "approver", "sourceRecordId", "grantedAt"] } },
+            "sourceRecordIdMustMatch": { "type": "boolean" },
+            "mustBeSuppliedByOperatorOrRecord": { "type": "boolean", "const": true },
+            "notes": { "$ref": "#/$defs/Notes" }
+          }
+        },
+        "approvalScopes": { "type": "array", "items": { "type": "string" } },
+        "decisionByRiskLevel": { "$ref": "#/$defs/ByRiskLevelDecision" },
+        "operatorConfirmRequired": { "$ref": "#/$defs/ByRiskLevelBoolean" },
+        "operatorConfirmPhrase": { "type": "string", "const": "approve <correlationId>" },
+        "groupDenyHandling": { "type": "string", "enum": ["skip_group_and_continue", "deny_run"] },
+        "escalations": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["policyUnavailable", "unknownSource", "missingRequiredAttribute", "ambiguousIdentity", "alreadyProvisioned", "unresolvedManager", "groupNotInCatalog", "groupNotFoundInTenant", "duplicateGroupDisplayName", "sourceConflict", "costBudgetExceeded"],
+          "properties": {
+            "policyUnavailable": { "$ref": "#/$defs/Decision" },
+            "unknownSource": { "$ref": "#/$defs/Decision" },
+            "missingRequiredAttribute": { "$ref": "#/$defs/Decision" },
+            "ambiguousIdentity": { "$ref": "#/$defs/Decision" },
+            "alreadyProvisioned": { "$ref": "#/$defs/Decision" },
+            "unresolvedManager": { "$ref": "#/$defs/Decision" },
+            "groupNotInCatalog": { "$ref": "#/$defs/Decision" },
+            "groupNotFoundInTenant": { "$ref": "#/$defs/Decision" },
+            "duplicateGroupDisplayName": { "$ref": "#/$defs/Decision" },
+            "sourceConflict": { "$ref": "#/$defs/Decision" },
+            "costBudgetExceeded": { "$ref": "#/$defs/Decision" },
+            "notes": { "$ref": "#/$defs/Notes" }
+          }
+        },
+        "notes": { "$ref": "#/$defs/Notes" }
+      }
+    },
+    "joinerRules": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sequence", "createInactiveUntilVerified", "onStepFailure", "externalIdFrom", "primaryEmailEqualsUserName", "existingUser"],
+      "properties": {
+        "sequence": { "type": "array", "items": { "type": "string", "enum": ["provisionUser", "setCustomSecurityAttributes", "addGroups", "verify", "activate"] } },
+        "createInactiveUntilVerified": { "type": "boolean" },
+        "onStepFailure": { "type": "string", "enum": ["stop_leave_inactive", "stop"] },
+        "externalIdFrom": { "type": "string", "const": "source.sourceRecordId" },
+        "primaryEmailEqualsUserName": { "type": "boolean" },
+        "existingUser": { "type": "string", "enum": ["require_manual_review", "deny"] },
+        "notes": { "$ref": "#/$defs/Notes" }
+      }
+    },
+    "moverRules": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sequence", "removeOldDepartmentGroups", "reevaluateHeldGroupCsaGates", "leaveUncataloguedGroupsUntouched", "compareToPreviousWhenPresent", "onStepFailure"],
+      "properties": {
+        "sequence": { "type": "array", "items": { "type": "string", "enum": ["attributes", "customSecurityAttributes", "groupRemoves", "groupAdds"] } },
+        "removeOldDepartmentGroups": { "type": "boolean" },
+        "reevaluateHeldGroupCsaGates": { "type": "boolean" },
+        "leaveUncataloguedGroupsUntouched": { "type": "boolean" },
+        "compareToPreviousWhenPresent": { "type": "boolean" },
+        "onStepFailure": { "type": "string", "const": "stop" },
+        "notes": { "$ref": "#/$defs/Notes" }
+      }
+    },
+    "offboardingOrder": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["modeSelection", "steps", "stepTools", "removalOrder", "deleteRequiresApprovalScope", "deleteBlockedWhen", "neverAfterDeprovision", "uncataloguedGroups", "onStepFailure"],
+      "properties": {
+        "modeSelection": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["mode", "when"],
+            "properties": {
+              "mode": { "$ref": "#/$defs/LeaverMode" },
+              "when": { "type": "array", "items": { "$ref": "#/$defs/Condition" } }
+            }
+          }
+        },
+        "steps": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["scheduled", "immediate", "delete"],
+          "properties": {
+            "scheduled": { "$ref": "#/$defs/StepList" },
+            "immediate": { "$ref": "#/$defs/StepList" },
+            "delete": { "$ref": "#/$defs/StepList" }
+          }
+        },
+        "stepTools": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["disable", "setLeaveDate", "removeMemberships", "verifyResidualAccess", "deprovision", "verifyDeprovisioned"],
+          "properties": {
+            "disable": { "type": "string", "const": "update_user" },
+            "setLeaveDate": { "type": "string", "const": "update_user_lifecycle" },
+            "removeMemberships": { "type": "string", "const": "remove_group_member" },
+            "verifyResidualAccess": { "type": "string", "const": "list_groups" },
+            "deprovision": { "type": "string", "const": "deprovision_user" },
+            "verifyDeprovisioned": { "type": "string", "const": "get_user" }
+          }
+        },
+        "removalOrder": { "type": "array", "items": { "type": "string", "enum": ["privileged", "business", "baseline", "uncatalogued"] } },
+        "deleteRequiresApprovalScope": { "type": "string", "const": "leaver:delete" },
+        "deleteBlockedWhen": { "type": "array", "items": { "$ref": "#/$defs/Condition" } },
+        "neverAfterDeprovision": { "type": "array", "items": { "$ref": "#/$defs/ToolName" } },
+        "uncataloguedGroups": { "type": "string", "enum": ["remove_and_warn", "retain_and_warn"] },
+        "onStepFailure": { "type": "string", "const": "stop" },
+        "notes": { "$ref": "#/$defs/Notes" }
+      }
+    },
+    "retainedAccessRules": { "type": "array", "items": { "$ref": "#/$defs/RetainedAccessRule" } },
+    "namingStandards": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["userName", "mailNickname", "displayName", "primaryEmail", "password"],
+      "properties": {
+        "userName": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["template", "normalization", "pattern", "maxLocalPartLength", "collision"],
+          "properties": {
+            "template": { "type": "string" },
+            "normalization": { "type": "array", "items": { "type": "string" } },
+            "pattern": { "type": "string", "format": "regex" },
+            "maxLocalPartLength": { "type": "integer", "minimum": 1 },
+            "collision": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["precheck", "strategy", "startAt", "maxAttempts"],
+              "properties": {
+                "precheck": { "type": "boolean" },
+                "strategy": { "type": "string", "enum": ["numericSuffix", "fail"] },
+                "startAt": { "type": "integer", "minimum": 1 },
+                "maxAttempts": { "type": "integer", "minimum": 1 }
+              }
+            }
+          }
+        },
+        "mailNickname": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["rule", "pattern", "maxLength"],
+          "properties": {
+            "rule": { "type": "string", "const": "equalsUserNameLocalPart" },
+            "pattern": { "type": "string", "format": "regex" },
+            "maxLength": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "displayName": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["template"],
+          "properties": { "template": { "type": "string" } }
+        },
+        "primaryEmail": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["rule", "type", "primary"],
+          "properties": {
+            "rule": { "type": "string", "const": "equalsUserName" },
+            "type": { "type": "string", "const": "work" },
+            "primary": { "type": "boolean", "const": true }
+          }
+        },
+        "password": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["rule", "minLength", "requireClasses", "neverInPreview", "neverInDecisionRecord", "neverInChat"],
+          "properties": {
+            "rule": { "type": "string", "const": "generateRandom" },
+            "minLength": { "type": "integer", "minimum": 12 },
+            "requireClasses": { "type": "array", "items": { "type": "string", "enum": ["upper", "lower", "digit", "symbol"] } },
+            "neverInPreview": { "type": "boolean", "const": true },
+            "neverInDecisionRecord": { "type": "boolean", "const": true },
+            "neverInChat": { "type": "boolean", "const": true }
+          }
+        },
+        "notes": { "$ref": "#/$defs/Notes" }
+      }
+    },
+    "costThresholds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["maxToolCallsPerRun", "warnAtPercent", "onExceed", "discoveryTools", "listAllUsers", "groupResolution", "projection"],
+      "properties": {
+        "maxToolCallsPerRun": {
+          "type": "object",
+          "required": ["entitlement-guardrail", "joiner-orchestrator", "mover-orchestrator", "leaver-orchestrator", "identity-change-auditor"],
+          "propertyNames": { "enum": ["entitlement-guardrail", "joiner-orchestrator", "mover-orchestrator", "leaver-orchestrator", "identity-change-auditor"] },
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        },
+        "warnAtPercent": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "onExceed": { "type": "string", "const": "stop_and_report" },
+        "discoveryTools": { "type": "string", "const": "never" },
+        "listAllUsers": { "type": "string", "const": "never" },
+        "groupResolution": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["strategy", "listAllMaxCatalogSize", "fallback"],
+          "properties": {
+            "strategy": { "type": "string", "enum": ["listAll", "perGroupFilter"] },
+            "listAllMaxCatalogSize": { "type": "integer", "minimum": 1 },
+            "fallback": { "type": "string", "const": "perGroupFilter" }
+          }
+        },
+        "projection": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["listUsersAttributes", "listGroupsAttributes"],
+          "properties": {
+            "listUsersAttributes": { "type": "array", "items": { "type": "string" }, "contains": { "const": "id" } },
+            "listGroupsAttributes": { "type": "array", "items": { "type": "string" }, "contains": { "const": "id" } }
+          }
+        },
+        "notes": { "$ref": "#/$defs/Notes" }
+      }
+    },
+    "auditRequirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decisionRecordSchema", "recordVersion", "correlationId", "timestamps", "requiredSections", "policyCheckTableInTranscript", "redactFields", "verificationRequiredBeforeCompleted", "outputs", "summaryMaxWords"],
+      "properties": {
+        "decisionRecordSchema": { "type": "string", "const": "policy/decision-record.schema.json" },
+        "recordVersion": { "type": "string", "const": "1.0" },
+        "correlationId": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["template", "pattern", "generatedBy"],
+          "properties": {
+            "template": { "type": "string" },
+            "pattern": { "type": "string", "format": "regex" },
+            "generatedBy": { "type": "string", "const": "skill" }
+          }
+        },
+        "timestamps": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["source", "nullAllowed"],
+          "properties": {
+            "source": { "type": "string", "const": "resourceMeta" },
+            "nullAllowed": { "type": "boolean", "const": true }
+          }
+        },
+        "requiredSections": { "type": "array", "items": { "type": "string", "enum": ["policyChecks", "approvals", "plannedActions", "executedActions", "skippedActions", "verificationFindings", "residualRisk", "toolCalls"] } },
+        "policyCheckTableInTranscript": { "type": "boolean", "const": true },
+        "redactFields": { "type": "array", "items": { "type": "string" }, "contains": { "const": "password" } },
+        "verificationRequiredBeforeCompleted": { "type": "boolean", "const": true },
+        "outputs": { "type": "array", "items": { "type": "string", "enum": ["summary", "json"] } },
+        "summaryMaxWords": { "type": "integer", "minimum": 50 },
+        "notes": { "$ref": "#/$defs/Notes" }
+      }
+    }
+  },
+  "$defs": {
+    "Notes": { "type": "string", "description": "Free text for humans. Ignored by evaluation." },
+    "Operator": { "type": "string", "enum": ["equals", "notEquals", "in", "notIn", "startsWith", "endsWith", "matches", "exists", "notExists"] },
+    "Decision": { "type": "string", "enum": ["allow", "allow_with_approval", "deny", "require_manual_review"] },
+    "RiskLevel": { "type": "string", "enum": ["low", "medium", "high"] },
+    "RiskLevelOrCatalog": { "type": "string", "enum": ["low", "medium", "high", "fromCatalog"] },
+    "LeaverMode": { "type": "string", "enum": ["scheduled", "immediate", "delete"] },
+    "StepName": { "type": "string", "enum": ["disable", "setLeaveDate", "removeMemberships", "verifyResidualAccess", "deprovision", "verifyDeprovisioned"] },
+    "StepList": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/StepName" } },
+    "GroupName": { "type": "string", "minLength": 1 },
+    "ToolName": {
+      "type": "string",
+      "enum": [
+        "get_service_provider_config", "list_resource_types", "list_schemas",
+        "list_users", "get_user", "provision_user", "update_user", "deprovision_user", "update_user_lifecycle",
+        "get_user_custom_security_attributes", "update_user_custom_security_attributes",
+        "list_groups", "get_group", "create_group", "update_group", "delete_group", "add_group_members", "remove_group_member"
+      ]
+    },
+    "ByRiskLevelDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["low", "medium", "high"],
+      "properties": { "low": { "$ref": "#/$defs/Decision" }, "medium": { "$ref": "#/$defs/Decision" }, "high": { "$ref": "#/$defs/Decision" } }
+    },
+    "ByRiskLevelBoolean": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["low", "medium", "high"],
+      "properties": { "low": { "type": "boolean" }, "medium": { "type": "boolean" }, "high": { "type": "boolean" } }
+    },
+    "Condition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subject", "op"],
+      "properties": {
+        "subject": { "type": "string", "pattern": "^(source|csa|user|group|leaver|mover|event)(\\.[A-Za-z0-9_-]+)*$" },
+        "op": { "$ref": "#/$defs/Operator" },
+        "value": {},
+        "notes": { "$ref": "#/$defs/Notes" }
+      },
+      "if": { "properties": { "op": { "enum": ["exists", "notExists"] } } },
+      "then": { "not": { "required": ["value"] } },
+      "else": { "required": ["value"] }
+    },
+    "CsaCondition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["set", "attribute", "op"],
+      "properties": {
+        "set": { "type": "string", "minLength": 1 },
+        "attribute": { "type": "string", "minLength": 1 },
+        "op": { "$ref": "#/$defs/Operator" },
+        "value": {},
+        "notes": { "$ref": "#/$defs/Notes" }
+      },
+      "if": { "properties": { "op": { "enum": ["exists", "notExists"] } } },
+      "then": { "not": { "required": ["value"] } },
+      "else": { "required": ["value"] }
+    },
+    "RequiredCoreAttribute": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "subject", "op"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^REQ-[0-9]{2}$" },
+        "subject": { "type": "string", "pattern": "^source(\\.[A-Za-z0-9_-]+)+$" },
+        "op": { "$ref": "#/$defs/Operator" },
+        "value": {},
+        "notes": { "$ref": "#/$defs/Notes" }
+      },
+      "if": { "properties": { "op": { "enum": ["exists", "notExists"] } } },
+      "then": { "not": { "required": ["value"] } },
+      "else": { "required": ["value"] }
+    },
+    "RequiredCsaAttribute": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "set", "attribute", "type", "required"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^REQ-CSA-[0-9]{2}$" },
+        "set": { "type": "string", "minLength": 1 },
+        "attribute": { "type": "string", "minLength": 1 },
+        "type": { "type": "string", "enum": ["string", "integer", "boolean", "stringArray"] },
+        "required": { "type": "boolean" },
+        "allowedValues": { "type": "array", "minItems": 1, "items": {} },
+        "pattern": { "type": "string", "format": "regex" },
+        "default": {},
+        "notes": { "$ref": "#/$defs/Notes" }
+      },
+      "not": { "required": ["allowedValues", "pattern"] }
+    },
+    "AuthoritativeSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "displayName", "recordIdPattern", "events", "allowedContractTypes"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+        "displayName": { "type": "string", "minLength": 1 },
+        "recordIdPattern": { "type": "string", "format": "regex" },
+        "events": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "enum": ["joiner", "mover", "leaver"] } },
+        "allowedContractTypes": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "notes": { "$ref": "#/$defs/Notes" }
+      }
+    },
+    "GroupCatalogEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["displayName", "classification", "riskLevel", "approvalRequired", "allowedAtJoiner", "requiresCsa"],
+      "properties": {
+        "displayName": { "$ref": "#/$defs/GroupName" },
+        "classification": { "type": "string", "enum": ["baseline", "business", "privileged"] },
+        "riskLevel": { "$ref": "#/$defs/RiskLevel" },
+        "approvalRequired": { "type": "boolean" },
+        "allowedAtJoiner": { "type": "boolean" },
+        "requiresCsa": { "type": "array", "items": { "$ref": "#/$defs/CsaCondition" } },
+        "owner": { "type": "string" },
+        "notes": { "$ref": "#/$defs/Notes" }
+      }
+    },
+    "SodRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "conflictingGroups", "enforcement", "rationale"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^SOD-[A-Z]{3}-[0-9]{3}$" },
+        "name": { "type": "string", "minLength": 1 },
+        "conflictingGroups": { "type": "array", "minItems": 2, "uniqueItems": true, "items": { "$ref": "#/$defs/GroupName" } },
+        "enforcement": { "type": "string", "enum": ["deny", "allow_with_approval"] },
+        "approvalScope": { "type": "string", "pattern": "^sod:SOD-[A-Z]{3}-[0-9]{3}$" },
+        "rationale": { "type": "string", "minLength": 1 },
+        "notes": { "$ref": "#/$defs/Notes" }
+      },
+      "if": { "properties": { "enforcement": { "const": "allow_with_approval" } } },
+      "then": { "required": ["approvalScope"] }
+    },
+    "RetainedAccessRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "groups", "retainWhen", "reason", "releaseBy"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^RET-[0-9]{3}$" },
+        "groups": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/GroupName" } },
+        "retainWhen": { "type": "array", "items": { "$ref": "#/$defs/Condition" } },
+        "reason": { "type": "string", "minLength": 1 },
+        "releaseBy": { "type": "string", "minLength": 1 },
+        "notes": { "$ref": "#/$defs/Notes" }
+      }
+    }
+  }
+}

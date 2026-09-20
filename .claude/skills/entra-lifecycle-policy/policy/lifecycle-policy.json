@@ -1,0 +1,263 @@
+{
+  "$schema": "./lifecycle-policy.schema.json",
+  "policyId": "contoso-lifecycle-policy",
+  "policyVersion": "1.0.0",
+  "effectiveFrom": "2026-09-01",
+  "notes": "Fictional tenant for entra-scim-mock-server. Group and user names must match demo/seed/contoso-demo-seed.json; object ids are never stored because they change on every mock boot.",
+  "tenant": {
+    "displayName": "Contoso (mock)",
+    "primaryDomain": "contoso.local",
+    "mcpServer": "entra-scim-mcp"
+  },
+  "evaluation": {
+    "stringComparison": "caseInsensitive",
+    "exactMatchSubjectPrefixes": ["csa."],
+    "conditionCombination": "all",
+    "operators": ["equals", "notEquals", "in", "notIn", "startsWith", "endsWith", "matches", "exists", "notExists"],
+    "decisionPrecedence": ["deny", "require_manual_review", "allow_with_approval", "allow"],
+    "riskOrder": ["low", "medium", "high"]
+  },
+  "customSecurityAttributes": {
+    "attributeSets": ["Employment", "Compliance"],
+    "pathPrefix": "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:CustomSecurityAttributes",
+    "readTool": "get_user_custom_security_attributes",
+    "writeTool": "update_user_custom_security_attributes",
+    "trustOnlyDedicatedRead": true
+  },
+  "authoritativeSources": [
+    {
+      "id": "workday",
+      "displayName": "Workday HCM",
+      "recordIdPattern": "^WD-[0-9]{6}$",
+      "events": ["joiner", "mover", "leaver"],
+      "allowedContractTypes": ["Employee"]
+    },
+    {
+      "id": "contractor-portal",
+      "displayName": "Contractor Portal",
+      "recordIdPattern": "^CP-[0-9]{5}$",
+      "events": ["joiner", "leaver"],
+      "allowedContractTypes": ["Contractor", "Vendor"]
+    }
+  ],
+  "requiredJoinerAttributes": {
+    "core": [
+      { "id": "REQ-01", "subject": "source.sourceRecordId", "op": "exists" },
+      { "id": "REQ-02", "subject": "source.worker.givenName", "op": "exists" },
+      { "id": "REQ-03", "subject": "source.worker.familyName", "op": "exists" },
+      { "id": "REQ-04", "subject": "source.worker.employeeNumber", "op": "matches", "value": "^[0-9]{6}$" },
+      { "id": "REQ-05", "subject": "source.worker.department", "op": "in", "value": ["Finance", "Engineering", "Operations", "Human Resources"] },
+      { "id": "REQ-06", "subject": "source.worker.userType", "op": "in", "value": ["Member", "Guest"] },
+      { "id": "REQ-07", "subject": "source.worker.managerUserName", "op": "matches", "value": "^[^@\\s]+@contoso\\.local$" },
+      { "id": "REQ-08", "subject": "source.effectiveDate", "op": "matches", "value": "^\\d{4}-\\d{2}-\\d{2}$" }
+    ],
+    "customSecurityAttributes": [
+      { "id": "REQ-CSA-01", "set": "Employment", "attribute": "ContractType", "type": "string", "required": true, "allowedValues": ["Employee", "Contractor", "Vendor"] },
+      { "id": "REQ-CSA-02", "set": "Employment", "attribute": "CostCenter", "type": "string", "required": true, "pattern": "^(FIN|ENG|OPS|HR)-[0-9]{3}$" },
+      { "id": "REQ-CSA-03", "set": "Compliance", "attribute": "DataClassification", "type": "string", "required": true, "allowedValues": ["Public", "Internal", "Confidential", "Restricted"] },
+      { "id": "REQ-CSA-04", "set": "Compliance", "attribute": "LegalHold", "type": "boolean", "required": false, "default": false }
+    ],
+    "onMissing": "deny",
+    "managerMustResolve": true,
+    "managerMustBeActive": "warn"
+  },
+  "approvedBaselineProfiles": {
+    "keyedBy": { "set": "Employment", "attribute": "ContractType" },
+    "profiles": {
+      "Employee": {
+        "baseGroups": ["All Employees"],
+        "departmentGroups": {
+          "Finance": ["SG-Finance-Users"],
+          "Engineering": ["SG-Engineering-Users"],
+          "Operations": [],
+          "Human Resources": []
+        },
+        "maxGroupRiskLevelAtJoiner": "medium"
+      },
+      "Contractor": {
+        "baseGroups": ["SG-Contractors"],
+        "departmentGroups": { "Engineering": ["SG-Engineering-Users"] },
+        "maxGroupRiskLevelAtJoiner": "low"
+      },
+      "Vendor": {
+        "baseGroups": ["SG-Contractors"],
+        "departmentGroups": {},
+        "maxGroupRiskLevelAtJoiner": "low"
+      }
+    },
+    "onNoProfile": "require_manual_review"
+  },
+  "groupCatalog": [
+    { "displayName": "All Employees", "classification": "baseline", "riskLevel": "low", "approvalRequired": false, "allowedAtJoiner": true, "requiresCsa": [], "owner": "identity-ops" },
+    { "displayName": "SG-Contractors", "classification": "baseline", "riskLevel": "low", "approvalRequired": false, "allowedAtJoiner": true, "requiresCsa": [ { "set": "Employment", "attribute": "ContractType", "op": "in", "value": ["Contractor", "Vendor"] } ], "owner": "identity-ops" },
+    { "displayName": "SG-Finance-Users", "classification": "business", "riskLevel": "low", "approvalRequired": false, "allowedAtJoiner": true, "requiresCsa": [], "owner": "finance-systems" },
+    { "displayName": "SG-Finance-AP-Requestors", "classification": "business", "riskLevel": "low", "approvalRequired": false, "allowedAtJoiner": true, "requiresCsa": [], "owner": "finance-systems" },
+    { "displayName": "SG-Finance-AP-Approvers", "classification": "business", "riskLevel": "medium", "approvalRequired": false, "allowedAtJoiner": true, "requiresCsa": [], "owner": "finance-systems" },
+    { "displayName": "SG-Finance-Treasury-Payments", "classification": "business", "riskLevel": "medium", "approvalRequired": true, "allowedAtJoiner": true, "requiresCsa": [ { "set": "Employment", "attribute": "CostCenter", "op": "startsWith", "value": "FIN-" } ], "owner": "treasury" },
+    { "displayName": "SG-Engineering-Users", "classification": "business", "riskLevel": "low", "approvalRequired": false, "allowedAtJoiner": true, "requiresCsa": [], "owner": "platform-eng" },
+    { "displayName": "SG-Engineering-ProdDeploy", "classification": "privileged", "riskLevel": "high", "approvalRequired": true, "allowedAtJoiner": false, "requiresCsa": [ { "set": "Employment", "attribute": "ContractType", "op": "equals", "value": "Employee" } ], "owner": "platform-eng" },
+    { "displayName": "SG-Entra-TenantAdmins", "classification": "privileged", "riskLevel": "high", "approvalRequired": true, "allowedAtJoiner": false, "requiresCsa": [], "owner": "identity-ops" },
+    { "displayName": "SG-Legal-Hold", "classification": "business", "riskLevel": "medium", "approvalRequired": true, "allowedAtJoiner": false, "requiresCsa": [], "owner": "legal" }
+  ],
+  "privilegedGroups": {
+    "displayNames": ["SG-Engineering-ProdDeploy", "SG-Entra-TenantAdmins"],
+    "treatAsPrivilegedIf": "inDisplayNamesOrClassificationPrivileged",
+    "rules": {
+      "allowedAtJoiner": false,
+      "approvalRequired": true,
+      "minimumRiskLevel": "high",
+      "breakglassOnlyGroups": ["SG-Entra-TenantAdmins"]
+    }
+  },
+  "sodRules": [
+    { "id": "SOD-FIN-001", "name": "AP requestor vs AP approver", "conflictingGroups": ["SG-Finance-AP-Requestors", "SG-Finance-AP-Approvers"], "enforcement": "deny", "rationale": "A user must not both raise and approve payables." },
+    { "id": "SOD-FIN-002", "name": "Production deploy vs treasury payments", "conflictingGroups": ["SG-Engineering-ProdDeploy", "SG-Finance-Treasury-Payments"], "enforcement": "deny", "rationale": "Code deployers must not hold payment release rights." },
+    { "id": "SOD-ADM-001", "name": "Tenant admin vs AP approver", "conflictingGroups": ["SG-Entra-TenantAdmins", "SG-Finance-AP-Approvers"], "enforcement": "allow_with_approval", "approvalScope": "sod:SOD-ADM-001", "rationale": "CISO-approved exception only." }
+  ],
+  "sodEvaluation": {
+    "resultingSet": "(currentMemberships - plannedRemovals) + plannedAdds",
+    "firesWhen": "two or more conflictingGroups are in resultingSet",
+    "bothRequestedRule": "denyHigherRiskThenLaterInRequest",
+    "preExistingOnlyConflict": "warn_and_residual_risk"
+  },
+  "riskModel": {
+    "aggregate": "max",
+    "signals": [
+      { "id": "RS-01", "event": "any", "signal": "group.riskLevel", "riskLevel": "fromCatalog" },
+      { "id": "RS-02", "event": "any", "signal": "group.isPrivileged", "riskLevel": "high" },
+      { "id": "RS-03", "event": "any", "signal": "sod.ruleFired", "riskLevel": "high" },
+      { "id": "RS-04", "event": "joiner", "signal": "source.missingRequiredAttribute", "riskLevel": "high" },
+      { "id": "RS-05", "event": "mover", "signal": "mover.departmentChanged", "riskLevel": "medium" },
+      { "id": "RS-06", "event": "mover", "signal": "mover.managerChanged", "riskLevel": "medium" },
+      { "id": "RS-07", "event": "mover", "signal": "mover.csaChanged", "riskLevel": "medium" },
+      { "id": "RS-08", "event": "mover", "signal": "mover.attributeOnlyNonSensitive", "riskLevel": "low" },
+      { "id": "RS-09", "event": "leaver", "signal": "leaver.mode.scheduled", "riskLevel": "medium" },
+      { "id": "RS-10", "event": "leaver", "signal": "leaver.mode.immediate", "riskLevel": "medium" },
+      { "id": "RS-11", "event": "leaver", "signal": "leaver.mode.delete", "riskLevel": "high" },
+      { "id": "RS-12", "event": "leaver", "signal": "leaver.targetHoldsPrivilegedGroup", "riskLevel": "high" }
+    ]
+  },
+  "approvalThresholds": {
+    "approvalRef": {
+      "pattern": "^(CHG|REQ|INC)-[0-9]{5,}$",
+      "example": "CHG-40012",
+      "requiredFields": ["ref", "scope", "approver", "sourceRecordId"],
+      "sourceRecordIdMustMatch": true,
+      "mustBeSuppliedByOperatorOrRecord": true
+    },
+    "approvalScopes": ["run", "group:<displayName>", "sod:<ruleId>", "leaver:delete"],
+    "decisionByRiskLevel": { "low": "allow", "medium": "allow_with_approval", "high": "allow_with_approval" },
+    "operatorConfirmRequired": { "low": false, "medium": true, "high": true },
+    "operatorConfirmPhrase": "approve <correlationId>",
+    "groupDenyHandling": "skip_group_and_continue",
+    "escalations": {
+      "policyUnavailable": "require_manual_review",
+      "unknownSource": "deny",
+      "missingRequiredAttribute": "deny",
+      "ambiguousIdentity": "require_manual_review",
+      "alreadyProvisioned": "require_manual_review",
+      "unresolvedManager": "require_manual_review",
+      "groupNotInCatalog": "deny",
+      "groupNotFoundInTenant": "require_manual_review",
+      "duplicateGroupDisplayName": "require_manual_review",
+      "sourceConflict": "require_manual_review",
+      "costBudgetExceeded": "require_manual_review"
+    }
+  },
+  "joinerRules": {
+    "sequence": ["provisionUser", "setCustomSecurityAttributes", "addGroups", "verify", "activate"],
+    "createInactiveUntilVerified": true,
+    "onStepFailure": "stop_leave_inactive",
+    "externalIdFrom": "source.sourceRecordId",
+    "primaryEmailEqualsUserName": true,
+    "existingUser": "require_manual_review"
+  },
+  "moverRules": {
+    "sequence": ["attributes", "customSecurityAttributes", "groupRemoves", "groupAdds"],
+    "removeOldDepartmentGroups": true,
+    "reevaluateHeldGroupCsaGates": true,
+    "leaveUncataloguedGroupsUntouched": true,
+    "compareToPreviousWhenPresent": true,
+    "onStepFailure": "stop"
+  },
+  "offboardingOrder": {
+    "modeSelection": [
+      { "mode": "delete", "when": [ { "subject": "source.leaver.mode", "op": "equals", "value": "delete" } ] },
+      { "mode": "scheduled", "when": [ { "subject": "source.leaver.mode", "op": "equals", "value": "scheduled" } ] },
+      { "mode": "immediate", "when": [] }
+    ],
+    "steps": {
+      "scheduled": ["setLeaveDate", "verifyResidualAccess"],
+      "immediate": ["disable", "setLeaveDate", "removeMemberships", "verifyResidualAccess"],
+      "delete": ["disable", "setLeaveDate", "removeMemberships", "verifyResidualAccess", "deprovision", "verifyDeprovisioned"]
+    },
+    "stepTools": {
+      "disable": "update_user",
+      "setLeaveDate": "update_user_lifecycle",
+      "removeMemberships": "remove_group_member",
+      "verifyResidualAccess": "list_groups",
+      "deprovision": "deprovision_user",
+      "verifyDeprovisioned": "get_user"
+    },
+    "removalOrder": ["privileged", "business", "baseline", "uncatalogued"],
+    "deleteRequiresApprovalScope": "leaver:delete",
+    "deleteBlockedWhen": [ { "subject": "csa.current.Compliance.LegalHold", "op": "equals", "value": true } ],
+    "neverAfterDeprovision": ["remove_group_member", "update_user", "update_user_lifecycle", "update_user_custom_security_attributes"],
+    "uncataloguedGroups": "remove_and_warn",
+    "onStepFailure": "stop"
+  },
+  "retainedAccessRules": [
+    { "id": "RET-001", "groups": ["SG-Legal-Hold"], "retainWhen": [], "reason": "Legal hold: released only by Legal, never by lifecycle automation.", "releaseBy": "legal" },
+    { "id": "RET-002", "groups": ["All Employees"], "retainWhen": [ { "subject": "leaver.mode", "op": "equals", "value": "scheduled" } ], "reason": "Baseline access remains until the effective date.", "releaseBy": "leaver-orchestrator" }
+  ],
+  "namingStandards": {
+    "userName": {
+      "template": "{givenName}.{familyName}@{primaryDomain}",
+      "normalization": ["lowercase", "stripDiacritics", "removeCharsNotIn:a-z0-9.-"],
+      "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*@contoso\\.local$",
+      "maxLocalPartLength": 64,
+      "collision": { "precheck": true, "strategy": "numericSuffix", "startAt": 2, "maxAttempts": 3 }
+    },
+    "mailNickname": { "rule": "equalsUserNameLocalPart", "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$", "maxLength": 64 },
+    "displayName": { "template": "{givenName} {familyName}" },
+    "primaryEmail": { "rule": "equalsUserName", "type": "work", "primary": true },
+    "password": {
+      "rule": "generateRandom",
+      "minLength": 16,
+      "requireClasses": ["upper", "lower", "digit", "symbol"],
+      "neverInPreview": true,
+      "neverInDecisionRecord": true,
+      "neverInChat": true
+    }
+  },
+  "costThresholds": {
+    "maxToolCallsPerRun": {
+      "entitlement-guardrail": 6,
+      "joiner-orchestrator": 20,
+      "mover-orchestrator": 20,
+      "leaver-orchestrator": 25,
+      "identity-change-auditor": 0
+    },
+    "warnAtPercent": 80,
+    "onExceed": "stop_and_report",
+    "discoveryTools": "never",
+    "listAllUsers": "never",
+    "groupResolution": { "strategy": "listAll", "listAllMaxCatalogSize": 25, "fallback": "perGroupFilter" },
+    "projection": {
+      "listUsersAttributes": ["id", "userName", "displayName", "active"],
+      "listGroupsAttributes": ["id", "displayName"]
+    }
+  },
+  "auditRequirements": {
+    "decisionRecordSchema": "policy/decision-record.schema.json",
+    "recordVersion": "1.0",
+    "correlationId": { "template": "elg-{sourceRecordId}-{random6}", "pattern": "^elg-[A-Za-z0-9-]{4,40}-[a-z0-9]{6}$", "generatedBy": "skill" },
+    "timestamps": { "source": "resourceMeta", "nullAllowed": true },
+    "requiredSections": ["policyChecks", "approvals", "plannedActions", "executedActions", "skippedActions", "verificationFindings", "residualRisk", "toolCalls"],
+    "policyCheckTableInTranscript": true,
+    "redactFields": ["password"],
+    "verificationRequiredBeforeCompleted": true,
+    "outputs": ["summary", "json"],
+    "summaryMaxWords": 200
+  }
+}

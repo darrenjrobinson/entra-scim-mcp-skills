@@ -1,0 +1,26 @@
+{
+  "name": "entra-lifecycle-guardrails",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Agent Skills pack that adds joiner / mover / leaver governance, entitlement guardrails and audit records on top of the entra-scim-mcp MCP server, driven by a tenant lifecycle policy and Entra Custom Security Attributes.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "mock": "entra-scim-mock-server --seed demo/seed/contoso-demo-seed.json",
+    "mock:capture": "entra-scim-mock-server --seed demo/seed/contoso-demo-seed.json --capture captures/demo-session.jsonl",
+    "seed:links": "node demo/scripts/seed-links.mjs demo/seed/contoso-demo-seed.json",
+    "inspector": "npx @mcpjam/inspector@latest",
+    "validate": "npm run validate:skills && npm run validate:policy",
+    "validate:skills": "node scripts/validate-skills.mjs",
+    "validate:policy": "ajv validate --spec=draft2020 -c ajv-formats --errors=text -s .claude/skills/entra-lifecycle-policy/policy/lifecycle-policy.schema.json -d .claude/skills/entra-lifecycle-policy/policy/lifecycle-policy.json && ajv validate --spec=draft2020 -c ajv-formats --errors=text -s .claude/skills/entra-lifecycle-policy/policy/decision-record.schema.json -d .claude/skills/entra-lifecycle-policy/policy/decision-record.example.json -d \"demo/expected/*.decision-record.json\"",
+    "verify:sequences": "node scripts/verify-tool-sequences.mjs"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "ajv-cli": "^5.0.0",
+    "ajv-formats": "^3.0.1",
+    "entra-scim-mcp": "0.2.1"
+  }
+}

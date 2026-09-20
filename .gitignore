@@ -1,0 +1,29 @@
+# Internal working docs (never published)
+*prd*.md
+*PRD*.md
+Blogpost*.md
+Blogpost*.MD
+REVIEW.md
+# Dependencies / build
+node_modules/
+dist/
+coverage/
+# Runtime output
+captures/
+*.jsonl
+*.log
+npm-debug.log*
+# Secrets
+.env
+.env.local
+*.local
+certs/
+*.pem
+*.pfx
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+# Claude Code per-user overrides
+.claude/settings.local.json

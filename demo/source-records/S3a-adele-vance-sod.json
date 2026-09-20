@@ -1,0 +1,21 @@
+{
+  "sourceSystem": "workday",
+  "sourceRecordId": "WD-000103",
+  "eventType": "mover",
+  "effectiveDate": "2026-09-22",
+  "target": { "userName": "adele.vance@contoso.local" },
+  "changes": { },
+  "requestedGroups": {
+    "add": ["SG-Finance-AP-Approvers"],
+    "remove": []
+  },
+  "approvals": [
+    {
+      "ref": "REQ-50017",
+      "scope": "group:SG-Finance-AP-Approvers",
+      "approver": "patti.fernandez@contoso.local",
+      "sourceRecordId": "WD-000103",
+      "grantedAt": "2026-09-19T23:15:00Z"
+    }
+  ]
+}

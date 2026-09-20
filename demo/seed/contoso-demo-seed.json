@@ -1,0 +1,375 @@
+{
+  "$comment": "Seed for entra-scim-mock-server --seed (npm run mock). The mock consumes only users[] and groups[] and assigns fresh ids on every boot, so manager links and group memberships cannot be expressed here: a members[] array on a group aborts the mock at boot. x-managers (userName -> manager userName) and x-memberships (group displayName -> member userNames) are ignored by the mock and applied after boot by demo/scripts/seed-links.mjs (npm run seed:links). Names are the canonical contoso.local demo tenant and must match the policy group catalog in .claude/skills/entra-lifecycle-policy.",
+  "users": [
+    {
+      "schemas": [
+        "urn:ietf:params:scim:schemas:core:2.0:User",
+        "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:User",
+        "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User",
+        "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:CustomSecurityAttributes"
+      ],
+      "userName": "patti.fernandez@contoso.local",
+      "displayName": "Patti Fernandez",
+      "active": true,
+      "title": "Finance Director",
+      "name": { "givenName": "Patti", "familyName": "Fernandez" },
+      "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:User": {
+        "mailNickname": "patti.fernandez",
+        "userType": "Member"
+      },
+      "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User": {
+        "department": "Finance",
+        "employeeNumber": "100001"
+      },
+      "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:CustomSecurityAttributes": {
+        "Employment": { "ContractType": "Employee", "CostCenter": "FIN-100" },
+        "Compliance": { "DataClassification": "Confidential", "LegalHold": false }
+      }
+    },
+    {
+      "schemas": [
+        "urn:ietf:params:scim:schemas:core:2.0:User",
+        "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:User",
+        "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User",
+        "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:CustomSecurityAttributes"
+      ],
+      "userName": "megan.bowen@contoso.local",
+      "displayName": "Megan Bowen",
+      "active": true,
+      "title": "Engineering Manager",
+      "name": { "givenName": "Megan", "familyName": "Bowen" },
+      "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:User": {
+        "mailNickname": "megan.bowen",
+        "userType": "Member"
+      },
+      "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User": {
+        "department": "Engineering",
+        "employeeNumber": "100002"
+      },
+      "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:CustomSecurityAttributes": {
+        "Employment": { "ContractType": "Employee", "CostCenter": "ENG-200" },
+        "Compliance": { "DataClassification": "Confidential", "LegalHold": false }
+      }
+    },
+    {
+      "schemas": [
+        "urn:ietf:params:scim:schemas:core:2.0:User",
+        "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:User",
+        "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User",
+        "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:CustomSecurityAttributes"
+      ],
+      "userName": "adele.vance@contoso.local",
+      "displayName": "Adele Vance",
+      "active": true,
+      "title": "Accounts Payable Analyst",
+      "name": { "givenName": "Adele", "familyName": "Vance" },
+      "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:User": {
+        "mailNickname": "adele.vance",
+        "userType": "Member"
+      },
+      "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User": {
+        "department": "Finance",
+        "employeeNumber": "100003"
+      },
+      "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:CustomSecurityAttributes": {
+        "Employment": { "ContractType": "Employee", "CostCenter": "FIN-100" },
+        "Compliance": { "DataClassification": "Confidential", "LegalHold": false }
+      }
+    },
+    {
+      "schemas": [
+        "urn:ietf:params:scim:schemas:core:2.0:User",
+        "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:User",
+        "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User",
+        "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:CustomSecurityAttributes"
+      ],
+      "userName": "lidia.holloway@contoso.local",
+      "displayName": "Lidia Holloway",
+      "active": true,
+      "title": "Treasury Analyst",
+      "name": { "givenName": "Lidia", "familyName": "Holloway" },
+      "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:User": {
+        "mailNickname": "lidia.holloway",
+        "userType": "Member"
+      },
+      "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User": {
+        "department": "Finance",
+        "employeeNumber": "100004"
+      },
+      "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:CustomSecurityAttributes": {
+        "Employment": { "ContractType": "Employee", "CostCenter": "FIN-110" },
+        "Compliance": { "DataClassification": "Confidential", "LegalHold": false }
+      }
+    },
+    {
+      "schemas": [
+        "urn:ietf:params:scim:schemas:core:2.0:User",
+        "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:User",
+        "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User",
+        "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:CustomSecurityAttributes"
+      ],
+      "userName": "diego.siciliani@contoso.local",
+      "displayName": "Diego Siciliani",
+      "active": true,
+      "title": "Accounts Payable Manager",
+      "name": { "givenName": "Diego", "familyName": "Siciliani" },
+      "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:User": {
+        "mailNickname": "diego.siciliani",
+        "userType": "Member"
+      },
+      "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User": {
+        "department": "Finance",
+        "employeeNumber": "100005"
+      },
+      "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:CustomSecurityAttributes": {
+        "Employment": { "ContractType": "Employee", "CostCenter": "FIN-100" },
+        "Compliance": { "DataClassification": "Restricted", "LegalHold": false }
+      }
+    },
+    {
+      "schemas": [
+        "urn:ietf:params:scim:schemas:core:2.0:User",
+        "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:User",
+        "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User",
+        "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:CustomSecurityAttributes"
+      ],
+      "userName": "alex.wilber@contoso.local",
+      "displayName": "Alex Wilber",
+      "active": true,
+      "title": "Software Engineer",
+      "name": { "givenName": "Alex", "familyName": "Wilber" },
+      "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:User": {
+        "mailNickname": "alex.wilber",
+        "userType": "Member"
+      },
+      "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User": {
+        "department": "Engineering",
+        "employeeNumber": "100006"
+      },
+      "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:CustomSecurityAttributes": {
+        "Employment": { "ContractType": "Employee", "CostCenter": "ENG-200" },
+        "Compliance": { "DataClassification": "Internal", "LegalHold": false }
+      }
+    },
+    {
+      "schemas": [
+        "urn:ietf:params:scim:schemas:core:2.0:User",
+        "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:User",
+        "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User",
+        "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:CustomSecurityAttributes"
+      ],
+      "userName": "nestor.wilke@contoso.local",
+      "displayName": "Nestor Wilke",
+      "active": true,
+      "title": "Senior Site Reliability Engineer",
+      "name": { "givenName": "Nestor", "familyName": "Wilke" },
+      "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:User": {
+        "mailNickname": "nestor.wilke",
+        "userType": "Member"
+      },
+      "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User": {
+        "department": "Engineering",
+        "employeeNumber": "100007"
+      },
+      "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:CustomSecurityAttributes": {
+        "Employment": { "ContractType": "Employee", "CostCenter": "ENG-200" },
+        "Compliance": { "DataClassification": "Restricted", "LegalHold": true }
+      }
+    },
+    {
+      "schemas": [
+        "urn:ietf:params:scim:schemas:core:2.0:User",
+        "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:User",
+        "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User",
+        "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:CustomSecurityAttributes"
+      ],
+      "userName": "pradeep.gupta@contoso.local",
+      "displayName": "Pradeep Gupta",
+      "active": true,
+      "title": "Contract Software Engineer",
+      "name": { "givenName": "Pradeep", "familyName": "Gupta" },
+      "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:User": {
+        "mailNickname": "pradeep.gupta",
+        "userType": "Member"
+      },
+      "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User": {
+        "department": "Engineering",
+        "employeeNumber": "200001"
+      },
+      "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:CustomSecurityAttributes": {
+        "Employment": { "ContractType": "Contractor", "CostCenter": "ENG-210" },
+        "Compliance": { "DataClassification": "Internal", "LegalHold": false }
+      }
+    }
+  ],
+  "groups": [
+    {
+      "schemas": [
+        "urn:ietf:params:scim:schemas:core:2.0:Group",
+        "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:Group"
+      ],
+      "displayName": "All Employees",
+      "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:Group": {
+        "description": "Baseline access for every employee. Classification baseline, risk low, owner identity-ops.",
+        "mailEnabled": false,
+        "mailNickname": "all-employees",
+        "securityEnabled": true
+      }
+    },
+    {
+      "schemas": [
+        "urn:ietf:params:scim:schemas:core:2.0:Group",
+        "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:Group"
+      ],
+      "displayName": "SG-Contractors",
+      "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:Group": {
+        "description": "Baseline access for contractors and vendors (requires Employment.ContractType in Contractor, Vendor). Classification baseline, risk low, owner identity-ops.",
+        "mailEnabled": false,
+        "mailNickname": "sg-contractors",
+        "securityEnabled": true
+      }
+    },
+    {
+      "schemas": [
+        "urn:ietf:params:scim:schemas:core:2.0:Group",
+        "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:Group"
+      ],
+      "displayName": "SG-Finance-Users",
+      "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:Group": {
+        "description": "Finance department applications. Classification business, risk low, owner finance-systems.",
+        "mailEnabled": false,
+        "mailNickname": "sg-finance-users",
+        "securityEnabled": true
+      }
+    },
+    {
+      "schemas": [
+        "urn:ietf:params:scim:schemas:core:2.0:Group",
+        "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:Group"
+      ],
+      "displayName": "SG-Finance-AP-Requestors",
+      "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:Group": {
+        "description": "Raise accounts-payable requests. Classification business, risk low, owner finance-systems. SoD SOD-FIN-001 with SG-Finance-AP-Approvers.",
+        "mailEnabled": false,
+        "mailNickname": "sg-finance-ap-requestors",
+        "securityEnabled": true
+      }
+    },
+    {
+      "schemas": [
+        "urn:ietf:params:scim:schemas:core:2.0:Group",
+        "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:Group"
+      ],
+      "displayName": "SG-Finance-AP-Approvers",
+      "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:Group": {
+        "description": "Approve accounts-payable requests. Classification business, risk medium, owner finance-systems. SoD SOD-FIN-001 with SG-Finance-AP-Requestors, SOD-ADM-001 with SG-Entra-TenantAdmins.",
+        "mailEnabled": false,
+        "mailNickname": "sg-finance-ap-approvers",
+        "securityEnabled": true
+      }
+    },
+    {
+      "schemas": [
+        "urn:ietf:params:scim:schemas:core:2.0:Group",
+        "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:Group"
+      ],
+      "displayName": "SG-Finance-Treasury-Payments",
+      "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:Group": {
+        "description": "Release treasury payments (approval required; requires Employment.CostCenter starting with FIN-). Classification business, risk medium, owner treasury. SoD SOD-FIN-002 with SG-Engineering-ProdDeploy.",
+        "mailEnabled": false,
+        "mailNickname": "sg-finance-treasury-payments",
+        "securityEnabled": true
+      }
+    },
+    {
+      "schemas": [
+        "urn:ietf:params:scim:schemas:core:2.0:Group",
+        "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:Group"
+      ],
+      "displayName": "SG-Engineering-Users",
+      "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:Group": {
+        "description": "Engineering department tooling. Classification business, risk low, owner platform-eng.",
+        "mailEnabled": false,
+        "mailNickname": "sg-engineering-users",
+        "securityEnabled": true
+      }
+    },
+    {
+      "schemas": [
+        "urn:ietf:params:scim:schemas:core:2.0:Group",
+        "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:Group"
+      ],
+      "displayName": "SG-Engineering-ProdDeploy",
+      "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:Group": {
+        "description": "Production deployment rights (privileged; approval required; never at joiner; requires Employment.ContractType Employee). Classification privileged, risk high, owner platform-eng. SoD SOD-FIN-002 with SG-Finance-Treasury-Payments.",
+        "mailEnabled": false,
+        "mailNickname": "sg-engineering-proddeploy",
+        "securityEnabled": true
+      }
+    },
+    {
+      "schemas": [
+        "urn:ietf:params:scim:schemas:core:2.0:Group",
+        "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:Group"
+      ],
+      "displayName": "SG-Entra-TenantAdmins",
+      "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:Group": {
+        "description": "Tenant administration (privileged, breakglass-only; never assigned by lifecycle automation). Classification privileged, risk high, owner identity-ops. SoD SOD-ADM-001 with SG-Finance-AP-Approvers.",
+        "mailEnabled": false,
+        "mailNickname": "sg-entra-tenantadmins",
+        "securityEnabled": true
+      }
+    },
+    {
+      "schemas": [
+        "urn:ietf:params:scim:schemas:core:2.0:Group",
+        "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:Group"
+      ],
+      "displayName": "SG-Legal-Hold",
+      "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:Group": {
+        "description": "Legal hold: retained on leavers (RET-001) and released only by Legal. Classification business, risk medium, owner legal.",
+        "mailEnabled": false,
+        "mailNickname": "sg-legal-hold",
+        "securityEnabled": true
+      }
+    }
+  ],
+  "x-managers": {
+    "adele.vance@contoso.local": "patti.fernandez@contoso.local",
+    "lidia.holloway@contoso.local": "patti.fernandez@contoso.local",
+    "diego.siciliani@contoso.local": "patti.fernandez@contoso.local",
+    "alex.wilber@contoso.local": "megan.bowen@contoso.local",
+    "nestor.wilke@contoso.local": "megan.bowen@contoso.local",
+    "pradeep.gupta@contoso.local": "megan.bowen@contoso.local"
+  },
+  "x-memberships": {
+    "All Employees": [
+      "patti.fernandez@contoso.local",
+      "megan.bowen@contoso.local",
+      "adele.vance@contoso.local",
+      "lidia.holloway@contoso.local",
+      "diego.siciliani@contoso.local",
+      "alex.wilber@contoso.local",
+      "nestor.wilke@contoso.local"
+    ],
+    "SG-Contractors": ["pradeep.gupta@contoso.local"],
+    "SG-Finance-Users": [
+      "patti.fernandez@contoso.local",
+      "adele.vance@contoso.local",
+      "lidia.holloway@contoso.local",
+      "diego.siciliani@contoso.local"
+    ],
+    "SG-Finance-AP-Requestors": ["adele.vance@contoso.local", "lidia.holloway@contoso.local"],
+    "SG-Finance-AP-Approvers": ["patti.fernandez@contoso.local", "diego.siciliani@contoso.local"],
+    "SG-Finance-Treasury-Payments": ["lidia.holloway@contoso.local"],
+    "SG-Engineering-Users": [
+      "megan.bowen@contoso.local",
+      "alex.wilber@contoso.local",
+      "nestor.wilke@contoso.local",
+      "pradeep.gupta@contoso.local"
+    ],
+    "SG-Engineering-ProdDeploy": ["megan.bowen@contoso.local", "nestor.wilke@contoso.local"],
+    "SG-Entra-TenantAdmins": [],
+    "SG-Legal-Hold": ["nestor.wilke@contoso.local"]
+  }
+}

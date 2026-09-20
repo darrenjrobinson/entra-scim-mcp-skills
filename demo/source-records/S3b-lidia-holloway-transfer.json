@@ -1,0 +1,33 @@
+{
+  "sourceSystem": "workday",
+  "sourceRecordId": "WD-000104",
+  "eventType": "mover",
+  "effectiveDate": "2026-09-22",
+  "target": { "userName": "lidia.holloway@contoso.local" },
+  "changes": {
+    "worker": {
+      "department": "Engineering",
+      "managerUserName": "megan.bowen@contoso.local",
+      "jobTitle": "Platform Analyst"
+    },
+    "customSecurityAttributes": {
+      "Employment": { "CostCenter": "ENG-210" }
+    }
+  },
+  "previous": {
+    "worker": { "department": "Finance" }
+  },
+  "requestedGroups": {
+    "add": [],
+    "remove": ["SG-Finance-AP-Requestors"]
+  },
+  "approvals": [
+    {
+      "ref": "REQ-50018",
+      "scope": "run",
+      "approver": "megan.bowen@contoso.local",
+      "sourceRecordId": "WD-000104",
+      "grantedAt": "2026-09-20T01:00:00Z"
+    }
+  ]
+}

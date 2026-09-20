@@ -1,0 +1,75 @@
+{
+  "recordVersion": "1.0",
+  "correlationId": "elg-WD-000123-k3v9qa",
+  "supersedes": null,
+  "skill": "joiner-orchestrator",
+  "skillVersion": "0.1.0",
+  "policyId": "contoso-lifecycle-policy",
+  "policyVersion": "1.0.0",
+  "event": "joiner",
+  "host": "mcpjam",
+  "dryRun": false,
+  "startedAt": null,
+  "completedAt": null,
+  "clockSource": "none",
+  "source": { "system": "workday", "recordId": "WD-000123" },
+  "target": { "userName": "priya.natarajan@contoso.local", "id": null, "displayName": "Priya Natarajan" },
+  "decision": "deny",
+  "outcome": "blocked",
+  "riskLevel": "high",
+  "policyChecks": [
+    { "id": "CHK-01", "rule": "policyVersion", "input": "1.0.0", "evidence": "entra-lifecycle-policy skill, policy/lifecycle-policy.json", "result": "pass" },
+    { "id": "CHK-02", "rule": "authoritativeSources[id=workday]", "input": "sourceSystem=workday; sourceRecordId=WD-000123; eventType=joiner; ContractType=Employee", "evidence": "source record", "result": "pass" },
+    { "id": "CHK-03", "rule": "requiredJoinerAttributes.core", "input": "REQ-01..REQ-08", "evidence": "source record: all eight present and matching", "result": "pass" },
+    { "id": "CHK-04", "rule": "requiredJoinerAttributes.customSecurityAttributes[REQ-CSA-01]", "subject": "csa.requested.Employment.ContractType", "input": "Employee", "evidence": "source record", "result": "pass" },
+    { "id": "CHK-05", "rule": "requiredJoinerAttributes.customSecurityAttributes[REQ-CSA-02]", "subject": "csa.requested.Employment.CostCenter", "input": "FIN-100", "evidence": "source record; matches ^(FIN|ENG|OPS|HR)-[0-9]{3}$", "result": "pass" },
+    { "id": "CHK-06", "rule": "requiredJoinerAttributes.customSecurityAttributes[REQ-CSA-03]", "subject": "csa.requested.Compliance.DataClassification", "input": "(absent)", "evidence": "source record: customSecurityAttributes.Compliance has no DataClassification; required=true; onMissing=deny", "result": "fail", "reasonCode": "missing_required_attribute" },
+    { "id": "CHK-07", "rule": "approvedBaselineProfiles.profiles.Employee", "input": "keyedBy Employment.ContractType=Employee; department=Finance", "evidence": "policy: baseGroups [All Employees]; departmentGroups.Finance [SG-Finance-Users]; maxGroupRiskLevelAtJoiner medium", "result": "pass" },
+    { "id": "CHK-08", "rule": "groupCatalog[SG-Finance-AP-Requestors]", "subject": "SG-Finance-AP-Requestors", "input": "requested", "evidence": "policy: business/low, allowedAtJoiner=true, no requiresCsa, no approval; SoD evaluated in CHK-09", "result": "pass" },
+    { "id": "CHK-09", "rule": "sodRules[SOD-FIN-001]", "subject": "SG-Finance-AP-Approvers", "input": "resulting set = {All Employees, SG-Finance-Users, SG-Finance-AP-Requestors, SG-Finance-AP-Approvers, SG-Finance-Treasury-Payments}", "evidence": "policy: SG-Finance-AP-Requestors and SG-Finance-AP-Approvers both in resulting set; enforcement=deny; the requested member SG-Finance-AP-Approvers is denied", "result": "fail", "reasonCode": "sod_conflict" },
+    { "id": "CHK-10", "rule": "groupCatalog[SG-Finance-Treasury-Payments].requiresCsa", "subject": "csa.effective.Employment.CostCenter", "input": "FIN-100", "evidence": "startsWith FIN- is true", "result": "pass" },
+    { "id": "CHK-11", "rule": "groupCatalog[SG-Finance-Treasury-Payments].approvalRequired", "subject": "SG-Finance-Treasury-Payments", "input": "CHG-40012 scope group:SG-Finance-Treasury-Payments", "evidence": "source record approvals[0]: matches ^(CHG|REQ|INC)-[0-9]{5,}$, all requiredFields present, sourceRecordId WD-000123 matches; would satisfy on re-run", "result": "needs_approval", "reasonCode": "approval_required" },
+    { "id": "CHK-12", "rule": "privilegedGroups.rules.breakglassOnlyGroups", "subject": "SG-Entra-TenantAdmins", "input": "requested at joiner", "evidence": "policy: SG-Entra-TenantAdmins is breakglass-only and allowedAtJoiner=false", "result": "fail", "reasonCode": "breakglass_only" },
+    { "id": "CHK-13", "rule": "costThresholds.maxToolCallsPerRun.joiner-orchestrator", "input": "0 of 20", "evidence": "run blocked before any tool call", "result": "pass" },
+    { "id": "CHK-14", "rule": "evaluation.decisionPrecedence", "input": "deny (CHK-06, CHK-09, CHK-12)", "evidence": "worst result across rows; riskModel.aggregate=max of RS-01..RS-04 = high", "result": "fail", "reasonCode": "missing_required_attribute" }
+  ],
+  "approvals": [
+    { "ref": "CHG-40012", "scope": "group:SG-Finance-Treasury-Payments", "approver": "treasury.lead@contoso.local", "sourceRecordId": "WD-000123", "grantedAt": "2026-09-19T03:10:00Z", "valid": true, "used": false }
+  ],
+  "plannedActions": [
+    { "seq": 1, "tool": "provision_user", "target": "priya.natarajan@contoso.local", "argsSummary": "userName, mailNickname=priya.natarajan, displayName=Priya Natarajan, givenName, familyName, active=false, externalId=WD-000123, userType=Member, department=Finance, employeeNumber=100482, managerId=<resolved at run time>, password=<generated, not shown>", "purpose": "create identity inactive", "policyBasis": ["namingStandards", "joinerRules.createInactiveUntilVerified"], "status": "not_attempted" },
+    { "seq": 2, "tool": "update_user_custom_security_attributes", "target": "<new user id>", "argsSummary": "replace Employment.ContractType=Employee, Employment.CostCenter=FIN-100, Compliance.DataClassification=<missing>", "purpose": "mandatory CSAs", "policyBasis": ["requiredJoinerAttributes.customSecurityAttributes"], "status": "not_attempted" },
+    { "seq": 3, "tool": "add_group_members", "target": "All Employees", "argsSummary": "memberIds=[<new user id>]", "purpose": "baseline profile", "policyBasis": ["approvedBaselineProfiles.profiles.Employee.baseGroups"], "status": "not_attempted" },
+    { "seq": 4, "tool": "add_group_members", "target": "SG-Finance-Users", "argsSummary": "memberIds=[<new user id>]", "purpose": "department baseline", "policyBasis": ["approvedBaselineProfiles.profiles.Employee.departmentGroups.Finance"], "status": "not_attempted" },
+    { "seq": 5, "tool": "add_group_members", "target": "SG-Finance-AP-Requestors", "argsSummary": "memberIds=[<new user id>]", "purpose": "requested, allow", "policyBasis": ["groupCatalog[SG-Finance-AP-Requestors]"], "status": "not_attempted" },
+    { "seq": 6, "tool": "add_group_members", "target": "SG-Finance-Treasury-Payments", "argsSummary": "memberIds=[<new user id>]", "purpose": "requested, allow_with_approval CHG-40012", "policyBasis": ["groupCatalog[SG-Finance-Treasury-Payments].approvalRequired", "approvalThresholds.approvalRef"], "status": "not_attempted" },
+    { "seq": 7, "tool": "get_user", "target": "<new user id>", "argsSummary": "full read", "purpose": "verify attributes", "policyBasis": ["auditRequirements.verificationRequiredBeforeCompleted"], "status": "not_attempted" },
+    { "seq": 8, "tool": "get_user_custom_security_attributes", "target": "<new user id>", "argsSummary": "attributeSets=[Employment, Compliance]", "purpose": "verify CSAs", "policyBasis": ["auditRequirements.verificationRequiredBeforeCompleted"], "status": "not_attempted" },
+    { "seq": 9, "tool": "list_groups", "target": "<new user id>", "argsSummary": "filter members.value eq <new user id>; attributes id,displayName", "purpose": "verify memberships", "policyBasis": ["auditRequirements.verificationRequiredBeforeCompleted"], "status": "not_attempted" },
+    { "seq": 10, "tool": "update_user", "target": "<new user id>", "argsSummary": "replace active=true", "purpose": "activate after verification", "policyBasis": ["joinerRules.sequence"], "status": "not_attempted" }
+  ],
+  "executedActions": [],
+  "skippedActions": [
+    { "seq": 1, "tool": "provision_user", "target": "priya.natarajan@contoso.local", "reason": "run blocked by CHK-06", "reasonCode": "missing_required_attribute" },
+    { "seq": 2, "tool": "update_user_custom_security_attributes", "reason": "run blocked by CHK-06", "reasonCode": "missing_required_attribute" },
+    { "seq": 3, "tool": "add_group_members", "group": "All Employees", "reason": "run blocked by CHK-06", "reasonCode": "missing_required_attribute" },
+    { "seq": 4, "tool": "add_group_members", "group": "SG-Finance-Users", "reason": "run blocked by CHK-06", "reasonCode": "missing_required_attribute" },
+    { "seq": 5, "tool": "add_group_members", "group": "SG-Finance-AP-Requestors", "reason": "run blocked by CHK-06", "reasonCode": "missing_required_attribute" },
+    { "seq": 6, "tool": "add_group_members", "group": "SG-Finance-Treasury-Payments", "reason": "run blocked by CHK-06; approval CHG-40012 is valid and would be used on re-run", "reasonCode": "missing_required_attribute" },
+    { "seq": null, "tool": "add_group_members", "group": "SG-Finance-AP-Approvers", "reason": "denied by SOD-FIN-001 (conflicts with requested SG-Finance-AP-Requestors)", "reasonCode": "sod_conflict" },
+    { "seq": null, "tool": "add_group_members", "group": "SG-Entra-TenantAdmins", "reason": "breakglass-only privileged group; never assignable at joiner", "reasonCode": "breakglass_only" }
+  ],
+  "verificationFindings": { "proved": [], "notVerifiable": [] },
+  "residualRisk": [
+    { "id": "RR-01", "description": "No identity created. Onboarding for WD-000123 is delayed until Workday supplies Compliance.DataClassification.", "severity": "medium", "owner": "hr-data", "dueBy": "2026-09-21" },
+    { "id": "RR-02", "description": "SG-Finance-AP-Approvers will stay denied on re-run while SG-Finance-AP-Requestors is also requested (SOD-FIN-001). The requester must drop one of the two.", "severity": "low", "owner": "finance-systems", "dueBy": null },
+    { "id": "RR-03", "description": "SG-Entra-TenantAdmins was requested for a new hire. Review the request source; this group is breakglass-only.", "severity": "medium", "owner": "identity-ops", "dueBy": null }
+  ],
+  "toolCalls": { "count": 0, "budget": 20, "byTool": {} },
+  "nextSteps": [
+    "Supply a corrected record with Compliance.DataClassification in [Public, Internal, Confidential, Restricted], same sourceRecordId WD-000123.",
+    "Drop SG-Finance-AP-Approvers or SG-Finance-AP-Requestors from requestedGroups; drop SG-Entra-TenantAdmins.",
+    "Re-run joiner-orchestrator; it will resolve all ids afresh and set supersedes=elg-WD-000123-k3v9qa."
+  ],
+  "summary": "Blocked. The Workday joiner record WD-000123 for Priya Natarajan passed the source, core-attribute and profile checks but is missing the mandatory Custom Security Attribute Compliance.DataClassification, so no tool was called and nothing was created. Of the four requested groups, SG-Finance-AP-Requestors is allowed, SG-Finance-AP-Approvers is denied by separation-of-duties rule SOD-FIN-001, SG-Finance-Treasury-Payments needs approval and the supplied reference CHG-40012 is valid, and SG-Entra-TenantAdmins is denied because it is breakglass-only. Zero tool calls were made against a budget of twenty. A human must correct the source record and trim the group request; nothing else is outstanding."
+}

@@ -1,0 +1,20 @@
+{
+  "sourceSystem": "workday",
+  "sourceRecordId": "WD-000107",
+  "eventType": "leaver",
+  "target": { "userName": "nestor.wilke@contoso.local" },
+  "leaver": {
+    "mode": "immediate",
+    "effectiveDateTime": "2026-09-20T09:00:00Z",
+    "reason": "Resignation, final day worked"
+  },
+  "approvals": [
+    {
+      "ref": "REQ-50021",
+      "scope": "run",
+      "approver": "megan.bowen@contoso.local",
+      "sourceRecordId": "WD-000107",
+      "grantedAt": "2026-09-19T22:30:00Z"
+    }
+  ]
+}

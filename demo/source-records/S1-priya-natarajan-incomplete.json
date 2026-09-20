@@ -1,0 +1,34 @@
+{
+  "sourceSystem": "workday",
+  "sourceRecordId": "WD-000123",
+  "eventType": "joiner",
+  "effectiveDate": "2026-09-21",
+  "worker": {
+    "givenName": "Priya",
+    "familyName": "Natarajan",
+    "employeeNumber": "100482",
+    "department": "Finance",
+    "jobTitle": "Accounts Payable Analyst",
+    "userType": "Member",
+    "managerUserName": "patti.fernandez@contoso.local"
+  },
+  "customSecurityAttributes": {
+    "Employment": { "ContractType": "Employee", "CostCenter": "FIN-100" },
+    "Compliance": { }
+  },
+  "requestedGroups": [
+    "SG-Finance-AP-Requestors",
+    "SG-Finance-AP-Approvers",
+    "SG-Finance-Treasury-Payments",
+    "SG-Entra-TenantAdmins"
+  ],
+  "approvals": [
+    {
+      "ref": "CHG-40012",
+      "scope": "group:SG-Finance-Treasury-Payments",
+      "approver": "treasury.lead@contoso.local",
+      "sourceRecordId": "WD-000123",
+      "grantedAt": "2026-09-19T03:10:00Z"
+    }
+  ]
+}
