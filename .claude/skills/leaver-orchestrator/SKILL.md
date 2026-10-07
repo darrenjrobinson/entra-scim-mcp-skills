@@ -2,9 +2,9 @@
 name: leaver-orchestrator
 description: "Offboard an Entra ID user in policy order via entra-scim-mcp: confirm the authoritative trigger, choose scheduled, immediate or delete mode, disable the account, set employeeLeaveDateTime, remove non-retained group memberships one call each, verify residual access, deprovision only with an approval ref and no legal hold, and emit a closure record. Use for termination, offboarding, leaver, disable account, deprovision user."
 license: MIT
-compatibility: "Requires entra-scim-mcp >= 0.2.1 (stdio) connected, plus the entra-lifecycle-policy and identity-change-auditor skills. update_user_lifecycle needs User-LifeCycleInfo.ReadWrite.All on a live tenant. Runs in MCPJam Inspector playground and Claude Code."
+compatibility: "Requires entra-scim-mcp >= 0.3.0 (stdio) connected, plus the entra-lifecycle-policy and identity-change-auditor skills. update_user_lifecycle needs User-LifeCycleInfo.ReadWrite.All on a live tenant. Runs in MCPJam Inspector playground and Claude Code."
 metadata:
-  version: "0.1.0"
+  version: "0.2.0"
   author: darrenjrobinson
   product: entra-lifecycle-guardrails
   homepage: https://github.com/darrenjrobinson/entra-scim-mcp-skills
@@ -45,7 +45,7 @@ The tenant policy lives in the `entra-lifecycle-policy` skill.
 1. `list_users {filter: [{attr: "userName", op: "eq", value: "<target.userName>"}], attributes: ["id","userName","displayName","active"]}` (or `externalId` alone). Exactly one → `userId`; else STOP `ambiguous_identity`. Already `active: false` → `warn` row (the disable step becomes a no-op but still runs and verifies).
 2. `get_user {id}` → `department`, `manager.value`, `employeeLeaveDateTime` (if any). Ignore any CSA object here.
 3. `list_groups {filter: [{attr: "members.value", op: "eq", value: "<userId>"}], attributes: ["id","displayName"]}` → current memberships **with ids**; no further group lookups are needed.
-4. `get_user_custom_security_attributes {id, attributeSets: <sets referenced by offboardingOrder.deleteBlockedWhen and retainedAccessRules>}` (here `["Compliance"]`) → `csa.current`.
+4. `get_user_custom_security_attributes {id, attributeSets: <sets referenced by offboardingOrder.deleteBlockedWhen, retainedAccessRules and the leaver risk signals>}` (here `["Compliance"]`) → `csa.current`.
 
 ## Step 3 — Mode and plan (no tool calls)
 
@@ -53,11 +53,11 @@ The tenant policy lives in the `entra-lifecycle-policy` skill.
 2. Steps = `offboardingOrder.steps[<mode>]`; each step's tool = `offboardingOrder.stepTools[<step>]`.
 3. Retained = every held group named in a `retainedAccessRules[]` entry whose `retainWhen[]` all hold (`retainWhen: []` = always). Mode `scheduled` also retains `All Employees` (RET-002).
 4. Removal set = held − retained, ordered by `offboardingOrder.removalOrder` (catalog `classification`: privileged → business → baseline), then held groups not in the catalog (`uncataloguedGroups = remove_and_warn`, row `warn`).
-5. Signals: `RS-09/10/11` by mode; `RS-12` if any held group is privileged. Mode `delete` additionally needs an approval with scope `leaver:delete` and is **blocked** when any `offboardingOrder.deleteBlockedWhen[]` condition holds (`csa.current.Compliance.LegalHold equals true` → `deny` / `delete_blocked_legal_hold`).
+5. Signals: `RS-09/10/11` by mode; `RS-12` if any held group is privileged; `RS-13` if `csa.current.Compliance.DataClassification` is `Restricted` (a sensitive identity flagged by a protected attribute rather than by a group). Mode `delete` additionally needs an approval with scope `leaver:delete` and is **blocked** when any `offboardingOrder.deleteBlockedWhen[]` condition holds (`csa.current.Compliance.LegalHold equals true` → `deny` / `delete_blocked_legal_hold`).
 
 ## Step 4 — Preview and gate (no tool calls)
 
-Risk = max of fired signals (`immediate` and `scheduled` are medium; `delete` or a privileged holder is high). Decision per `approvalThresholds.decisionByRiskLevel`: medium and high need an approval with scope `run` (plus `leaver:delete` for delete mode) and operator confirmation. Print the check table, then:
+Risk = max of fired signals (`immediate` and `scheduled` are medium; `delete`, a privileged holder or a `Restricted` data classification is high). Decision per `approvalThresholds.decisionByRiskLevel`: medium and high need an approval with scope `run` (plus `leaver:delete` for delete mode) and operator confirmation. Print the check table, then:
 
 ```
 ## Execution preview — leaver (<mode>) — <correlationId>
@@ -136,4 +136,4 @@ Plain summary (what changed, why, which policy rows, what was retained and why, 
 
 ## Policy fields read by this skill
 
-`policyId`, `policyVersion`, `customSecurityAttributes.*`, `authoritativeSources[]`, `groupCatalog[].classification`, `privilegedGroups.displayNames`, `riskModel.signals[RS-09..RS-12]`, `approvalThresholds.*`, `offboardingOrder.*`, `retainedAccessRules[]`, `costThresholds.maxToolCallsPerRun.leaver-orchestrator`, `costThresholds.warnAtPercent`, `costThresholds.projection`, `auditRequirements.correlationId`, `auditRequirements.policyCheckTableInTranscript`.
+`policyId`, `policyVersion`, `customSecurityAttributes.*`, `authoritativeSources[]`, `groupCatalog[].classification`, `privilegedGroups.displayNames`, `riskModel.signals[RS-09..RS-13]`, `approvalThresholds.*`, `offboardingOrder.*`, `retainedAccessRules[]`, `costThresholds.maxToolCallsPerRun.leaver-orchestrator`, `costThresholds.warnAtPercent`, `costThresholds.projection`, `auditRequirements.correlationId`, `auditRequirements.policyCheckTableInTranscript`.

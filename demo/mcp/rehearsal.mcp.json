@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "entra-scim-rehearsal": {
+      "command": "npx",
+      "args": ["-y", "entra-scim-mcp@0.3.0"],
+      "env": {
+        "ENTRA_SCIM_DRY_RUN": "1"
+      }
+    },
+    "entra-lifecycle-intake": {
+      "command": "node",
+      "args": ["demo/intake/server.mjs"],
+      "env": {
+        "LIFECYCLE_INTAKE_BACKEND": "stub"
+      }
+    }
+  }
+}

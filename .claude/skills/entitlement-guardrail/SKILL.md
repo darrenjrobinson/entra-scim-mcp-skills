@@ -2,9 +2,9 @@
 name: entitlement-guardrail
 description: "Evaluate requested Entra ID group assignments against the shared lifecycle policy before any write: catalog membership, privileged-group rules, Custom Security Attribute gates, separation-of-duties conflicts, approval refs and estimated tool-call cost. Returns allow, allow_with_approval, deny or require_manual_review per group plus a decision record. Use for access requests, 'can this user have group X', SoD or privilege checks, and inside joiner/mover runs."
 license: MIT
-compatibility: "Requires entra-scim-mcp >= 0.2.1 (stdio) when run standalone; makes no tool calls when embedded by an orchestrator. Requires the entra-lifecycle-policy and identity-change-auditor skills. Works in MCPJam Inspector and Claude Code."
+compatibility: "Requires entra-scim-mcp >= 0.3.0 (stdio) when run standalone; makes no tool calls when embedded by an orchestrator. Requires the entra-lifecycle-policy and identity-change-auditor skills. Works in MCPJam Inspector and Claude Code."
 metadata:
-  version: "0.1.0"
+  version: "0.2.0"
   author: darrenjrobinson
   product: entra-lifecycle-guardrails
   homepage: https://github.com/darrenjrobinson/entra-scim-mcp-skills
@@ -85,7 +85,7 @@ Denied groups do not stop the run (`approvalThresholds.groupDenyHandling = skip_
 
 ## Cost estimate
 
-Adds × 1 + removes × 1 + 3 verification reads (+ 2 for a joiner activate step). Compare with the caller's `costThresholds.maxToolCallsPerRun.<caller>` and report it.
+Adds × ceil(member ids per add / 20) + removes × 1 + 3 verification reads (+ 2 for a joiner activate step). The server chunks `add_group_members` at 20 member ids per PATCH and reports `patchCalls` in its result: a single-member add is one call, a 50-member add is three. The decision record carries the actual `patchCalls`. Compare the estimate with the caller's `costThresholds.maxToolCallsPerRun.<caller>` and report it.
 
 ## Mandatory check table
 
@@ -94,7 +94,7 @@ Print this before returning (and the caller re-prints it before any write). Ever
 ```
 ### Policy checks — <policyId> v<policyVersion> — <correlationId>
 | # | Check | Policy ref | Input (normalised) | Evidence | Result |
-| CHK-01 | Policy loaded | policyVersion | 1.0.0 | skill file | pass |
+| CHK-01 | Policy loaded | policyVersion | 1.1.0 | skill file | pass |
 | CHK-02 | Group in catalog: sg-finance-ap-approvers | groupCatalog | SG-Finance-AP-Approvers | policy | pass |
 | CHK-03 | SOD-FIN-001: AP-Requestors + AP-Approvers in resulting set | sodRules[SOD-FIN-001] | current: AP-Requestors; add: AP-Approvers | call #2 | fail → deny (sod_conflict) |
 | — | Aggregate | evaluation.decisionPrecedence | max risk = high | rows above | decision = deny |

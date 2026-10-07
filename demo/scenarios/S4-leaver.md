@@ -3,15 +3,16 @@
 **Skill:** `leaver-orchestrator`
 **Record:** `demo/source-records/S4-nestor-wilke-leaver.json`
 **Expected:** decision `allow_with_approval`, outcome `completed`, about **11 tool calls of 25**, privileged group removed first, `SG-Legal-Hold` retained, no `deprovision_user`.
-**Precondition:** seeded mock with links applied. Nestor must still be active (restart the mock if S4 has already run).
+**Precondition:** seeded mock with links applied. Nestor must still be active (run `npm run demo:up` again if S4 has already run).
 
 ## Why this scenario
 
-Nestor holds four groups: `All Employees` (baseline), `SG-Engineering-Users` (business), `SG-Engineering-ProdDeploy` (privileged) and `SG-Legal-Hold`. His CSA `Compliance.LegalHold` is `true`. The policy turns that into three behaviours:
+Nestor holds four groups: `All Employees` (baseline), `SG-Engineering-Users` (business), `SG-Engineering-ProdDeploy` (privileged) and `SG-Legal-Hold`. His CSAs are `Compliance.DataClassification = Restricted` and `Compliance.LegalHold = true`. The policy turns those into four behaviours:
 
 - `offboardingOrder.removalOrder` removes the privileged group first, then business, then baseline.
 - `retainedAccessRules[RET-001]` keeps `SG-Legal-Hold` no matter what, and the record says so rather than silently skipping it.
 - `offboardingOrder.deleteBlockedWhen` would block a `delete` request outright while `LegalHold` is true. This run is `immediate`, so the rule is recorded but not triggered.
+- `riskModel.signals[RS-13]` lifts the run to high risk because the identity is classified `Restricted`. The privileged group he holds (RS-12) does the same; either alone is enough. A sensitive identity is flagged by a protected attribute, not inferred from a group name.
 
 The mode is declared in the record (`leaver.mode`); the skill never infers it from dates.
 
@@ -42,7 +43,7 @@ Offboard this leaver.
 }
 ```
 
-Expected end of turn 1: four reads (`list_users`, `get_user`, `list_groups members.value`, `get_user_custom_security_attributes` with `attributeSets: ["Compliance"]`); a check table showing mode `immediate`, `RS-12` (privileged holder) → risk `high`, `RET-001` retaining `SG-Legal-Hold`, `LegalHold = true` noted; a preview with `update_user active=false`, `update_user_lifecycle`, three `remove_group_member` rows in the order ProdDeploy → Engineering-Users → All Employees, two verification rows, and a `(retained) SG-Legal-Hold` row; gate `approve elg-WD-000107-xxxxxx`.
+Expected end of turn 1: four reads (`list_users`, `get_user`, `list_groups members.value`, `get_user_custom_security_attributes` with `attributeSets: ["Compliance"]`); a check table showing mode `immediate`, `RS-12` (privileged holder) and `RS-13` (`DataClassification = Restricted`) → risk `high`, `RET-001` retaining `SG-Legal-Hold`, `LegalHold = true` noted; a preview with `update_user active=false`, `update_user_lifecycle`, three `remove_group_member` rows in the order ProdDeploy → Engineering-Users → All Employees, two verification rows, and a `(retained) SG-Legal-Hold` row; gate `approve elg-WD-000107-xxxxxx`.
 
 ## Turn 2
 

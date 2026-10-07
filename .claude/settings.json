@@ -1,3 +1,3 @@
 {
-  "enabledMcpjsonServers": ["entra-scim-mock"]
+  "enabledMcpjsonServers": ["entra-scim-mock", "entra-lifecycle-intake"]
 }

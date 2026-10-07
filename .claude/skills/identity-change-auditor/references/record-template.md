@@ -15,10 +15,12 @@ Contract: `entra-lifecycle-policy/policy/decision-record.schema.json`. Shape to 
 | PlannedAction.status | `planned` `executed` `skipped` `not_attempted` |
 | host | `mcpjam` `claude-code` `other` |
 | clockSource | `resourceMeta` `none` |
-| event | `joiner` `mover` `leaver` `entitlement-evaluation` |
-| skill | `entitlement-guardrail` `identity-change-auditor` `joiner-orchestrator` `mover-orchestrator` `leaver-orchestrator` |
+| event | `joiner` `mover` `leaver` `entitlement-evaluation` `intake` |
+| skill | `entitlement-guardrail` `identity-change-auditor` `joiner-orchestrator` `mover-orchestrator` `leaver-orchestrator` `lifecycle-intake` |
 
-ReasonCode: `policy_unavailable` `unknown_source` `missing_required_attribute` `csa_missing` `csa_condition_failed` `group_not_in_catalog` `group_not_found_in_tenant` `duplicate_group_display_name` `not_allowed_at_joiner` `privileged_not_allowed_at_joiner` `breakglass_only` `exceeds_profile_risk` `sod_conflict` `approval_required` `approval_missing` `approval_invalid` `approval_scope_mismatch` `operator_confirmation_missing` `ambiguous_identity` `already_provisioned` `unresolved_manager` `source_conflict` `cost_budget_exceeded` `partial_failure` `verification_failed` `dry_run_active` `delete_blocked_legal_hold`
+ReasonCode: `policy_unavailable` `unknown_source` `missing_required_attribute` `csa_missing` `csa_condition_failed` `group_not_in_catalog` `group_not_found_in_tenant` `duplicate_group_display_name` `not_allowed_at_joiner` `privileged_not_allowed_at_joiner` `breakglass_only` `exceeds_profile_risk` `sod_conflict` `approval_required` `approval_missing` `approval_invalid` `approval_scope_mismatch` `operator_confirmation_missing` `ambiguous_identity` `already_provisioned` `unresolved_manager` `source_conflict` `cost_budget_exceeded` `partial_failure` `verification_failed` `dry_run_active` `delete_blocked_legal_hold` `intake_low_confidence` `intake_not_lifecycle` `intake_override_attempt` `intake_record_required` `intake_backend_unavailable`
+
+Tool names also include `system_one` (the `entra-lifecycle-intake` server's only tool; an intake run's single executed action, phase `read`).
 
 Tool names (18): `get_service_provider_config` `list_resource_types` `list_schemas` `list_users` `get_user` `provision_user` `update_user` `deprovision_user` `update_user_lifecycle` `get_user_custom_security_attributes` `update_user_custom_security_attributes` `list_groups` `get_group` `create_group` `update_group` `delete_group` `add_group_members` `remove_group_member`
 
@@ -36,8 +38,8 @@ Tool names (18): `get_service_provider_config` `list_resource_types` `list_schem
 | `dryRun` | `true` if any tool result contained `"dryRun": true` |
 | `startedAt` / `completedAt` | earliest / latest `meta.created` or `meta.lastModified` seen in tool results this run, else `null` |
 | `clockSource` | `resourceMeta` when timestamps came from tool results, `none` when both are null |
-| `source` | `{system: <sourceSystem>, recordId: <sourceRecordId>}` |
-| `target` | `{userName, id (resolved or created this run, else null), displayName}` |
+| `source` | `{system: <sourceSystem>, recordId: <sourceRecordId>}`; an intake run with no record yet uses `{system: "operator", recordId: null}` |
+| `target` | `{userName, id (resolved or created this run, else null), displayName}`; `userName` and `displayName` may be `null` when the target has not been resolved (intake runs) |
 | `decision`, `riskLevel` | from the check table aggregate row |
 | `outcome` | per the classification table in SKILL.md |
 
@@ -96,7 +98,7 @@ Every tool call, reads included, in the order made.
 
 ## toolCalls
 
-`{count, budget, byTool}`. `count` = executedActions length. `budget` = `costThresholds.maxToolCallsPerRun.<skill>`. `byTool` = `{"list_users": 3, "list_groups": 2, ...}` with no zero entries. Add a `warn` check row when `count` ≥ `warnAtPercent` of `budget`.
+`{count, budget, byTool}`. `count` = executedActions length (an `add_group_members` call that the server split into several PATCHes is still one tool call; put its `patchCalls` in `resultSummary`). `budget` = `costThresholds.maxToolCallsPerRun.<skill>`. `byTool` = `{"list_users": 3, "list_groups": 2, ...}` with no zero entries. Add a `warn` check row when `count` ≥ `warnAtPercent` of `budget`.
 
 ## nextSteps[] and summary
 
@@ -104,7 +106,7 @@ Every tool call, reads included, in the order made.
 
 ## details (optional)
 
-Free-form per skill: guardrail `groupResults[]` (`{displayName, id|null, result, reasonCodes[], ruleIds[], approvalScopeNeeded|null}`); mover `before` / `after` objects; leaver `mode`, `retained[]`, `residual[]`.
+Free-form per skill: guardrail `groupResults[]` (`{displayName, id|null, result, reasonCodes[], ruleIds[], approvalScopeNeeded|null}`); mover `before` / `after` objects; leaver `mode`, `retained[]`, `residual[]`; intake `intake` `{backend, model, latencyMs, answers, route}` with every answer and its probabilities as the model returned them.
 
 ## Evidence-writing rules
 

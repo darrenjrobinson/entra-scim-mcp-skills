@@ -1,16 +1,16 @@
 {
   "recordVersion": "1.0",
-  "correlationId": "elg-WD-000103-k7m2qx",
+  "correlationId": "elg-WD-000103-k3m9xq",
   "supersedes": null,
   "skill": "mover-orchestrator",
-  "skillVersion": "0.1.0",
+  "skillVersion": "0.2.0",
   "policyId": "contoso-lifecycle-policy",
-  "policyVersion": "1.0.0",
+  "policyVersion": "1.2.0",
   "event": "mover",
   "host": "claude-code",
   "dryRun": false,
-  "startedAt": "2026-09-20T09:03:35.005Z",
-  "completedAt": "2026-09-20T09:04:30.236Z",
+  "startedAt": "2026-10-06T06:55:46.437Z",
+  "completedAt": "2026-10-06T06:55:46.701Z",
   "clockSource": "resourceMeta",
   "source": {
     "system": "workday",
@@ -18,7 +18,7 @@
   },
   "target": {
     "userName": "adele.vance@contoso.local",
-    "id": "7f747a5c-6e7b-4698-82ee-9771a2b02254",
+    "id": "773fb571-dcbe-4c82-b93d-dfc7f974a224",
     "displayName": "Adele Vance"
   },
   "decision": "deny",
@@ -28,15 +28,15 @@
     {
       "id": "CHK-01",
       "rule": "policyVersion",
-      "input": "1.0.0",
-      "evidence": "entra-lifecycle-policy skill, embedded policy block; major version 1",
+      "input": "contoso-lifecycle-policy 1.2.0",
+      "evidence": "entra-lifecycle-policy skill, policy/lifecycle-policy.json; major version 1",
       "result": "pass"
     },
     {
       "id": "CHK-02",
       "rule": "authoritativeSources[id=workday]",
       "input": "sourceSystem=workday; sourceRecordId=WD-000103; eventType=mover",
-      "evidence": "source record: id matches ^WD-[0-9]{6}$; mover in events",
+      "evidence": "source record: matches ^WD-[0-9]{6}$; mover in events",
       "result": "pass"
     },
     {
@@ -44,18 +44,35 @@
       "rule": "approvalThresholds.escalations.ambiguousIdentity",
       "subject": "adele.vance@contoso.local",
       "input": "userName eq adele.vance@contoso.local",
-      "evidence": "call #1: list_users -> totalResults 1, id 7f747a5c-6e7b-4698-82ee-9771a2b02254, active=true",
+      "evidence": "call #1: list_users -> totalResults 1, active=true, id 773fb571-dcbe-4c82-b93d-dfc7f974a224",
       "result": "pass"
     },
     {
       "id": "CHK-04",
-      "rule": "requiredJoinerAttributes.core[REQ-05, REQ-07]",
-      "input": "changes={}",
-      "evidence": "source record: no worker attribute or CSA change requested; attribute diff empty",
+      "rule": "moverRules.compareToPreviousWhenPresent",
+      "subject": "changes.worker",
+      "input": "(absent); previous (absent)",
+      "evidence": "call #3: get_user -> department Finance, employeeNumber 100003, manager e8d221da-8c63-45e2-a108-1e0a3f494998, title Accounts Payable Analyst, active=true; no attribute to change",
       "result": "pass"
     },
     {
       "id": "CHK-05",
+      "rule": "customSecurityAttributes.trustOnlyDedicatedRead",
+      "subject": "changes.customSecurityAttributes",
+      "input": "(absent)",
+      "evidence": "call #4: get_user_custom_security_attributes -> Employment.ContractType=Employee, Employment.CostCenter=FIN-100, Compliance.DataClassification=Confidential, Compliance.LegalHold=false; csa.effective = current",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-06",
+      "rule": "moverRules.reevaluateHeldGroupCsaGates",
+      "subject": "currentMemberships",
+      "input": "All Employees, SG-Finance-Users, SG-Finance-AP-Requestors",
+      "evidence": "call #5: list_groups members.value eq 773fb571-dcbe-4c82-b93d-dfc7f974a224 -> totalResults 3; all in catalog with requiresCsa=[]; no uncatalogued groups held",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-07",
       "rule": "groupCatalog[SG-Finance-AP-Approvers]",
       "subject": "SG-Finance-AP-Approvers",
       "input": "requested add",
@@ -63,34 +80,19 @@
       "result": "pass"
     },
     {
-      "id": "CHK-06",
+      "id": "CHK-08",
       "rule": "costThresholds.groupResolution",
       "subject": "SG-Finance-AP-Approvers",
-      "input": "listAll (catalog size 10 <= 25)",
-      "evidence": "call #2: list_groups no filter -> totalResults 10, no nextCursor, 1 match id 2f6b2aeb-89b7-4166-8e90-6eb246824815",
-      "result": "pass"
-    },
-    {
-      "id": "CHK-07",
-      "rule": "privilegedGroups",
-      "subject": "SG-Finance-AP-Approvers",
-      "input": "classification=business",
-      "evidence": "policy: not in privilegedGroups.displayNames and classification is not privileged",
-      "result": "pass"
-    },
-    {
-      "id": "CHK-08",
-      "rule": "moverRules.compareToPreviousWhenPresent",
-      "input": "(absent)",
-      "evidence": "source record: no previous block; call #3: get_user department=Finance, employeeNumber=100003, manager.value=b885e160-f9ea-4f4a-b395-56c85d5bc192, title=Accounts Payable Analyst, active=true",
+      "input": "listAll, catalog size 10 <= 25",
+      "evidence": "call #2: list_groups -> totalResults 10, no nextCursor; SG-Finance-AP-Approvers -> 1 match id 3034d291-c50d-439e-b18e-e0585fa54e88",
       "result": "pass"
     },
     {
       "id": "CHK-09",
-      "rule": "moverRules.reevaluateHeldGroupCsaGates",
-      "subject": "All Employees, SG-Finance-Users, SG-Finance-AP-Requestors",
-      "input": "csa.effective = Employment.ContractType=Employee, Employment.CostCenter=FIN-100, Compliance.DataClassification=Confidential, Compliance.LegalHold=false",
-      "evidence": "call #4: get_user_custom_security_attributes; call #5: list_groups members.value eq 7f747a5c-6e7b-4698-82ee-9771a2b02254 -> 3 groups; policy: all three requiresCsa=[]",
+      "rule": "privilegedGroups",
+      "subject": "SG-Finance-AP-Approvers",
+      "input": "classification=business",
+      "evidence": "policy: not in privilegedGroups.displayNames and classification is not privileged",
       "result": "pass"
     },
     {
@@ -106,15 +108,15 @@
       "rule": "sodRules[SOD-FIN-001]",
       "subject": "SG-Finance-AP-Approvers",
       "input": "resulting set = {All Employees, SG-Finance-Users, SG-Finance-AP-Requestors, SG-Finance-AP-Approvers}",
-      "evidence": "call #5: user holds SG-Finance-AP-Requestors; requested add SG-Finance-AP-Approvers; policy: enforcement=deny; the requested member is denied",
+      "evidence": "call #5: SG-Finance-AP-Requestors already held; policy: both conflictingGroups in resulting set, enforcement=deny; the requested member SG-Finance-AP-Approvers is denied",
       "result": "fail",
       "reasonCode": "sod_conflict"
     },
     {
       "id": "CHK-12",
       "rule": "sodRules[SOD-FIN-002, SOD-ADM-001]",
-      "input": "resulting set contains none of SG-Engineering-ProdDeploy, SG-Finance-Treasury-Payments, SG-Entra-TenantAdmins",
-      "evidence": "call #5; policy",
+      "input": "resulting set as CHK-11",
+      "evidence": "policy: SG-Engineering-ProdDeploy, SG-Finance-Treasury-Payments and SG-Entra-TenantAdmins are not in the resulting set; neither rule fires",
       "result": "pass"
     },
     {
@@ -122,28 +124,21 @@
       "rule": "approvalThresholds.approvalRef",
       "subject": "REQ-50017",
       "input": "scope group:SG-Finance-AP-Approvers; approver patti.fernandez@contoso.local; sourceRecordId WD-000103",
-      "evidence": "source record approvals[0]: matches ^(CHG|REQ|INC)-[0-9]{5,}$, all requiredFields present, sourceRecordId matches, scope matches the requested group; valid but not used because a deny cannot be overridden by an approval",
+      "evidence": "source record approvals[0]: matches ^(CHG|REQ|INC)-[0-9]{5,}$, all requiredFields present, sourceRecordId matches, scope matches the requested group; not used because a deny is never overridden by an approval",
       "result": "pass"
     },
     {
       "id": "CHK-14",
-      "rule": "riskModel.signals",
-      "input": "RS-01 medium (catalog riskLevel of SG-Finance-AP-Approvers); RS-03 high (SOD-FIN-001 fired); RS-05, RS-06, RS-07, RS-08 not fired",
-      "evidence": "policy; call #3 and call #4 show no attribute or CSA change",
+      "rule": "costThresholds.maxToolCallsPerRun.mover-orchestrator",
+      "input": "5 of 20 (25%)",
+      "evidence": "calls #1-#5, all reads; below warnAtPercent 80",
       "result": "pass"
     },
     {
       "id": "CHK-15",
-      "rule": "costThresholds.maxToolCallsPerRun.mover-orchestrator",
-      "input": "5 of 20",
-      "evidence": "calls #1-#5, all reads; 25% of budget, below warnAtPercent 80",
-      "result": "pass"
-    },
-    {
-      "id": "CHK-16",
       "rule": "evaluation.decisionPrecedence",
-      "input": "deny (CHK-11)",
-      "evidence": "worst result across rows; riskModel.aggregate=max of RS-01, RS-03 = high",
+      "input": "deny (CHK-11); signals RS-01 medium, RS-03 high",
+      "evidence": "worst result across rows; riskModel.aggregate=max -> high; only requested add denied and nothing else to change",
       "result": "fail",
       "reasonCode": "sod_conflict"
     }
@@ -167,8 +162,8 @@
       "phase": "resolve",
       "tool": "list_users",
       "status": "ok",
-      "at": "2026-09-20T09:04:30.095Z",
-      "resultSummary": "filter userName eq adele.vance@contoso.local; attributes id,userName,displayName,active; totalResults 1; id 7f747a5c-6e7b-4698-82ee-9771a2b02254; active=true"
+      "at": "2026-10-06T06:55:46.657Z",
+      "resultSummary": "userName eq adele.vance@contoso.local -> totalResults 1; id 773fb571-dcbe-4c82-b93d-dfc7f974a224, displayName Adele Vance, active=true"
     },
     {
       "call": 2,
@@ -176,8 +171,8 @@
       "phase": "resolve",
       "tool": "list_groups",
       "status": "ok",
-      "at": "2026-09-20T09:04:30.236Z",
-      "resultSummary": "no filter; attributes id,displayName; totalResults 10; no nextCursor; SG-Finance-AP-Approvers -> 2f6b2aeb-89b7-4166-8e90-6eb246824815 (1 match)"
+      "at": "2026-10-06T06:55:46.701Z",
+      "resultSummary": "catalog listing, attributes id,displayName -> totalResults 10, no nextCursor; SG-Finance-AP-Approvers -> 1 match id 3034d291-c50d-439e-b18e-e0585fa54e88"
     },
     {
       "call": 3,
@@ -185,8 +180,8 @@
       "phase": "read",
       "tool": "get_user",
       "status": "ok",
-      "at": "2026-09-20T09:04:30.095Z",
-      "resultSummary": "department=Finance; employeeNumber=100003; manager.value=b885e160-f9ea-4f4a-b395-56c85d5bc192; title=Accounts Payable Analyst; active=true; mailNickname=adele.vance; CSA object in payload ignored"
+      "at": "2026-10-06T06:55:46.657Z",
+      "resultSummary": "department Finance, employeeNumber 100003, manager e8d221da-8c63-45e2-a108-1e0a3f494998, title Accounts Payable Analyst, active=true; CustomSecurityAttributes object in this result ignored"
     },
     {
       "call": 4,
@@ -194,8 +189,8 @@
       "phase": "read",
       "tool": "get_user_custom_security_attributes",
       "status": "ok",
-      "at": "2026-09-20T09:04:30.095Z",
-      "resultSummary": "attributeSets Employment,Compliance; Employment.ContractType=Employee; Employment.CostCenter=FIN-100; Compliance.DataClassification=Confidential; Compliance.LegalHold=false"
+      "at": "2026-10-06T06:55:46.657Z",
+      "resultSummary": "attributeSets Employment, Compliance -> ContractType=Employee, CostCenter=FIN-100, DataClassification=Confidential, LegalHold=false"
     },
     {
       "call": 5,
@@ -203,34 +198,41 @@
       "phase": "read",
       "tool": "list_groups",
       "status": "ok",
-      "at": "2026-09-20T09:04:30.184Z",
-      "resultSummary": "filter members.value eq 7f747a5c-6e7b-4698-82ee-9771a2b02254; totalResults 3; All Employees cd9d11ee-d6d6-4fd8-b686-a496b4151408, SG-Finance-Users 8d78743a-8b84-4f07-951e-09025dccec8b, SG-Finance-AP-Requestors 9848cdab-c7b2-464e-8f02-627dbbafd2f6"
+      "at": "2026-10-06T06:55:46.688Z",
+      "resultSummary": "members.value eq 773fb571-dcbe-4c82-b93d-dfc7f974a224 -> totalResults 3: All Employees b4417a3d-c878-462a-a37c-671ceaa53cd1, SG-Finance-Users 4b5c791c-536c-4bb9-8713-e1f7d5539855, SG-Finance-AP-Requestors 61896578-5f60-4404-a67f-31c41f761619"
     }
   ],
   "skippedActions": [
     {
       "seq": null,
       "tool": "add_group_members",
+      "target": "adele.vance@contoso.local",
       "group": "SG-Finance-AP-Approvers",
-      "reason": "denied by SOD-FIN-001: user already holds SG-Finance-AP-Requestors (call #5); enforcement deny; approval REQ-50017 is valid but cannot override a deny",
+      "reason": "denied by SOD-FIN-001: the user already holds SG-Finance-AP-Requestors (call #5); a deny is never overridden by an approval, so REQ-50017 was not used",
       "reasonCode": "sod_conflict"
     }
   ],
   "verificationFindings": {
     "proved": [],
     "notVerifiable": [
-      "nested or transitive group access",
-      "application role assignments",
-      "PIM eligibility"
+      "nested or transitive group access (SoD was evaluated on direct memberships only)",
+      "application role assignments"
     ]
   },
   "residualRisk": [
     {
       "id": "RR-01",
-      "description": "Workday mover WD-000103 (effective 2026-09-22) is unapplied. SG-Finance-AP-Approvers stays denied for Adele Vance while she holds SG-Finance-AP-Requestors (SOD-FIN-001, enforcement deny, not approvable). Finance-systems must choose one AP role for her.",
+      "description": "SG-Finance-AP-Approvers was requested for a user who holds SG-Finance-AP-Requestors. If the intent is a requestor-to-approver move, the record must remove SG-Finance-AP-Requestors in the same run; otherwise the request should be withdrawn.",
       "severity": "low",
       "owner": "finance-systems",
-      "dueBy": "2026-09-22"
+      "dueBy": null
+    },
+    {
+      "id": "RR-02",
+      "description": "SOD-FIN-001 was evaluated on direct group memberships. Transitive membership and application role assignments are not visible on the SCIM read surface.",
+      "severity": "low",
+      "owner": "identity-ops",
+      "dueBy": null
     }
   ],
   "toolCalls": {
@@ -244,16 +246,20 @@
     }
   },
   "nextSteps": [
-    "Finance-systems decides whether Adele Vance moves from AP requestor to AP approver, or withdraws the SG-Finance-AP-Approvers request.",
-    "If approver is the intended role, re-submit WD-000103 with requestedGroups.add [SG-Finance-AP-Approvers] and requestedGroups.remove [SG-Finance-AP-Requestors]; REQ-50017 stays valid for scope group:SG-Finance-AP-Approvers and the medium-risk run will need operator confirmation.",
-    "Re-run mover-orchestrator; it will resolve all ids afresh and set supersedes=elg-WD-000103-k7m2qx."
+    "finance-systems: confirm whether Adele Vance is moving from AP requestor to AP approver. If yes, resubmit WD-000103 with requestedGroups.remove [SG-Finance-AP-Requestors] and requestedGroups.add [SG-Finance-AP-Approvers]; SOD-FIN-001 is evaluated on the resulting set, so the removal clears the conflict.",
+    "Approval REQ-50017 (scope group:SG-Finance-AP-Approvers, sourceRecordId WD-000103) is valid and reusable on that re-run. SG-Finance-AP-Approvers is medium risk, so the re-run will also require operator confirmation with the new correlationId.",
+    "Re-run mover-orchestrator; it resolves all ids afresh and sets supersedes=elg-WD-000103-k3m9xq."
   ],
-  "summary": "Nothing changed for Adele Vance (id 7f747a5c-6e7b-4698-82ee-9771a2b02254); no write was made. Workday mover record WD-000103, effective 2026-09-22, asked only to add SG-Finance-AP-Approvers, with no attribute or Custom Security Attribute changes. Check CHK-11 denied that addition under separation-of-duties rule SOD-FIN-001 because she already holds SG-Finance-AP-Requestors (call #5), and approval REQ-50017, although valid, cannot override a deny. Her attributes, CSAs and existing memberships (All Employees, SG-Finance-Users, SG-Finance-AP-Requestors) were left untouched. Finance-systems must decide whether she moves from requestor to approver; a re-submitted record that also removes SG-Finance-AP-Requestors would clear the conflict and could use REQ-50017.",
+  "summary": "Nothing changed for Adele Vance (id 773fb571-dcbe-4c82-b93d-dfc7f974a224): no attribute, Custom Security Attribute or group membership was written. Workday mover record WD-000103 asked only for the addition of SG-Finance-AP-Approvers, backed by approval REQ-50017. Separation-of-duties rule SOD-FIN-001 denied that addition because the resulting membership set would hold both SG-Finance-AP-Requestors, which she already holds per call #5, and SG-Finance-AP-Approvers, and a deny is never overridden by an approval, so REQ-50017 was valid but unused. Her existing memberships All Employees, SG-Finance-Users and SG-Finance-AP-Requestors, her department Finance, her manager and her cost centre FIN-100 are unchanged. finance-systems must decide whether this is a requestor-to-approver move and, if so, resubmit the record with SG-Finance-AP-Requestors in requestedGroups.remove.",
   "details": {
+    "signalsFired": [
+      "RS-01 (group.riskLevel medium)",
+      "RS-03 (sod.ruleFired high)"
+    ],
     "groupResults": [
       {
         "displayName": "SG-Finance-AP-Approvers",
-        "id": "2f6b2aeb-89b7-4166-8e90-6eb246824815",
+        "id": "3034d291-c50d-439e-b18e-e0585fa54e88",
         "result": "deny",
         "reasonCodes": [
           "sod_conflict"
@@ -268,7 +274,7 @@
       "attributes": {
         "department": "Finance",
         "employeeNumber": "100003",
-        "manager": "b885e160-f9ea-4f4a-b395-56c85d5bc192",
+        "manager": "e8d221da-8c63-45e2-a108-1e0a3f494998",
         "title": "Accounts Payable Analyst",
         "active": true
       },
@@ -292,7 +298,7 @@
       "attributes": {
         "department": "Finance",
         "employeeNumber": "100003",
-        "manager": "b885e160-f9ea-4f4a-b395-56c85d5bc192",
+        "manager": "e8d221da-8c63-45e2-a108-1e0a3f494998",
         "title": "Accounts Payable Analyst",
         "active": true
       },

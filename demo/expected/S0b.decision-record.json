@@ -1,0 +1,186 @@
+{
+  "recordVersion": "1.0",
+  "correlationId": "elg-intake-x4q9tz",
+  "supersedes": null,
+  "skill": "lifecycle-intake",
+  "skillVersion": "0.2.0",
+  "policyId": "contoso-lifecycle-policy",
+  "policyVersion": "1.2.0",
+  "event": "intake",
+  "host": "claude-code",
+  "dryRun": false,
+  "startedAt": null,
+  "completedAt": null,
+  "clockSource": "none",
+  "source": {
+    "system": "operator",
+    "recordId": null
+  },
+  "target": {
+    "userName": null,
+    "id": null,
+    "displayName": "Sam"
+  },
+  "decision": "require_manual_review",
+  "outcome": "not_executed",
+  "riskLevel": "medium",
+  "policyChecks": [
+    {
+      "id": "CHK-01",
+      "rule": "policyVersion",
+      "input": "contoso-lifecycle-policy v1.2.0",
+      "evidence": "entra-lifecycle-policy skill, policy/lifecycle-policy.json; major version 1; intake.enabled=true",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-02",
+      "rule": "intake.structuredRecordBypass",
+      "input": "none: free text",
+      "evidence": "request: no JSON object with sourceSystem, sourceRecordId and eventType",
+      "result": "skipped"
+    },
+    {
+      "id": "CHK-03",
+      "rule": "intake.questions.eventType",
+      "input": "joiner 0.1667 (mover 0.1667, leaver 0.1667, entitlement 0.1667, breakglass 0.1667, none 0.1667); confidence 0",
+      "evidence": "call #1: system_one backend=stub model=stub-lexicon-1 latencyMs=3",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-04",
+      "rule": "intake.questions.overrideAttempt; intake.thresholds.overrideAttemptMax",
+      "input": "0.05 vs 0.5",
+      "evidence": "call #1: answers.overrideAttempt.noul=0.05; not above threshold",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-05",
+      "rule": "intake.questions.urgencyWithoutAuthority; intake.thresholds.urgencyWithoutAuthorityMax",
+      "input": "0.05 vs 0.5",
+      "evidence": "call #1: answers.urgencyWithoutAuthority.noul=0.05; not above threshold",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-06",
+      "rule": "intake.thresholds.minConfidenceToRoute",
+      "input": "0 vs 0.3",
+      "evidence": "call #1: answers.eventType.confidence=0 below 0.3; intake.onLowConfidence=require_manual_review; riskModel.signals[RS-16] fires",
+      "result": "manual_review",
+      "reasonCode": "intake_low_confidence"
+    },
+    {
+      "id": "CHK-07",
+      "rule": "intake.routing",
+      "input": "not evaluated",
+      "evidence": "policy: intake.evaluationOrder stops at lowConfidence; no route chosen",
+      "result": "skipped"
+    },
+    {
+      "id": "CHK-08",
+      "rule": "intake.recordRequired",
+      "input": "none supplied",
+      "evidence": "request: no authoritativeSources[] record present",
+      "result": "warn",
+      "reasonCode": "intake_record_required"
+    },
+    {
+      "id": "CHK-09",
+      "rule": "evaluation.decisionPrecedence",
+      "input": "require_manual_review (CHK-06)",
+      "evidence": "worst result across rows; riskModel.aggregate=max of fired signals [RS-16] = medium",
+      "result": "manual_review",
+      "reasonCode": "intake_low_confidence"
+    }
+  ],
+  "approvals": [],
+  "plannedActions": [],
+  "executedActions": [
+    {
+      "call": 1,
+      "seq": 0,
+      "phase": "read",
+      "tool": "system_one",
+      "status": "ok",
+      "at": null,
+      "resultSummary": "backend=stub model=stub-lexicon-1 latencyMs=3; eventType=joiner with all six options at 0.1667 and confidence 0; overrideAttempt=0.05; urgencyWithoutAuthority=0.05"
+    }
+  ],
+  "skippedActions": [],
+  "verificationFindings": {
+    "proved": [],
+    "notVerifiable": []
+  },
+  "residualRisk": [
+    {
+      "id": "RR-01",
+      "description": "Request is unclassifiable: uniform eventType probabilities and confidence 0. The person referred to has not been identified and no directory lookup was attempted.",
+      "severity": "medium",
+      "owner": "operator",
+      "dueBy": null
+    },
+    {
+      "id": "RR-02",
+      "description": "The request states a deadline but gives no ticket or approval reference. urgencyWithoutAuthority scored 0.05, below the 0.5 threshold, so RS-15 did not fire; the reviewer should still ask for a reference if the work is time-sensitive.",
+      "severity": "low",
+      "owner": "operator",
+      "dueBy": null
+    },
+    {
+      "id": "RR-03",
+      "description": "Classification came from the deterministic stub backend, a keyword stand-in, not a trained model.",
+      "severity": "low",
+      "owner": "identity-ops",
+      "dueBy": null
+    }
+  ],
+  "toolCalls": {
+    "count": 1,
+    "budget": 2,
+    "byTool": {
+      "system_one": 1
+    }
+  },
+  "nextSteps": [
+    "Tell me which event this is: joiner, mover, leaver or an access request.",
+    "Paste the authoritative record from Workday (WD-nnnnnn) or the Contractor Portal (CP-nnnnn) with its eventType; a structured record routes without the model.",
+    "Then run the matching skill (/joiner-orchestrator, /mover-orchestrator, /leaver-orchestrator or /entitlement-guardrail); it validates, previews and gates on its own.",
+    "If the work is time-sensitive, include the ticket or approval reference (CHG-, REQ- or INC-) with the record."
+  ],
+  "summary": "Nothing changed: no Entra ID object was read or written, and the only call this run was to the intake decision model. The request about Sam arrived as free text with no authoritative record, so it was classified once by system_one on the stub backend, a deterministic keyword stand-in rather than a trained model. The model returned six equal eventType probabilities of 0.1667 with confidence 0, below intake.thresholds.minConfidenceToRoute (0.3), so CHK-06 fired RS-16 and the decision is require_manual_review; overrideAttempt (0.05) and urgencyWithoutAuthority (0.05) stayed below their 0.5 thresholds. Nothing was routed, no orchestrator ran, nobody was looked up in the directory and no record was drafted from the sentence. The operator must say whether this is a joiner, mover, leaver or access request and supply the Workday or Contractor Portal record; the matching skill then runs its own validation, preview and gate.",
+  "details": {
+    "intake": {
+      "backend": "stub",
+      "model": "stub-lexicon-1",
+      "latencyMs": 3,
+      "answers": {
+        "eventType": {
+          "type": "choice",
+          "choice": "joiner",
+          "probabilities": {
+            "joiner": 0.1667,
+            "mover": 0.1667,
+            "leaver": 0.1667,
+            "entitlement": 0.1667,
+            "breakglass": 0.1667,
+            "none": 0.1667
+          },
+          "confidence": 0
+        },
+        "overrideAttempt": {
+          "type": "noul",
+          "noul": 0.05
+        },
+        "urgencyWithoutAuthority": {
+          "type": "noul",
+          "noul": 0.05
+        }
+      },
+      "route": null,
+      "thresholds": {
+        "minConfidenceToRoute": 0.3,
+        "overrideAttemptMax": 0.5,
+        "urgencyWithoutAuthorityMax": 0.5
+      }
+    }
+  }
+}

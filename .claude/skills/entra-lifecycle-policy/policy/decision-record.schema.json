@@ -15,11 +15,11 @@
     "recordVersion": { "type": "string", "const": "1.0" },
     "correlationId": { "type": "string", "pattern": "^elg-[A-Za-z0-9-]{4,40}-[a-z0-9]{6}$" },
     "supersedes": { "type": ["string", "null"], "description": "correlationId of the earlier run this one replaces (a re-run after a blocked request), else null." },
-    "skill": { "type": "string", "enum": ["entitlement-guardrail", "identity-change-auditor", "joiner-orchestrator", "mover-orchestrator", "leaver-orchestrator"] },
+    "skill": { "type": "string", "enum": ["entitlement-guardrail", "identity-change-auditor", "joiner-orchestrator", "mover-orchestrator", "leaver-orchestrator", "lifecycle-intake"] },
     "skillVersion": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
     "policyId": { "type": "string" },
     "policyVersion": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
-    "event": { "type": "string", "enum": ["joiner", "mover", "leaver", "entitlement-evaluation"] },
+    "event": { "type": "string", "enum": ["joiner", "mover", "leaver", "entitlement-evaluation", "intake"] },
     "host": { "type": "string", "enum": ["mcpjam", "claude-code", "other"] },
     "dryRun": { "type": "boolean" },
     "startedAt": { "$ref": "#/$defs/NullableTimestamp" },
@@ -29,16 +29,16 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["system", "recordId"],
-      "properties": { "system": { "type": "string" }, "recordId": { "type": "string" } }
+      "properties": { "system": { "type": "string" }, "recordId": { "type": ["string", "null"], "description": "null for an intake run that has no authoritative record yet" } }
     },
     "target": {
       "type": "object",
       "additionalProperties": false,
       "required": ["userName", "id", "displayName"],
       "properties": {
-        "userName": { "type": "string" },
+        "userName": { "type": ["string", "null"], "description": "null when the target has not been resolved (intake runs)" },
         "id": { "type": ["string", "null"], "description": "Entra object id when resolved or created this run, else null." },
-        "displayName": { "type": "string" }
+        "displayName": { "type": ["string", "null"] }
       }
     },
     "decision": { "$ref": "#/$defs/Decision" },
@@ -96,7 +96,8 @@
         "privileged_not_allowed_at_joiner", "breakglass_only", "exceeds_profile_risk", "sod_conflict", "approval_required",
         "approval_missing", "approval_invalid", "approval_scope_mismatch", "operator_confirmation_missing",
         "ambiguous_identity", "already_provisioned", "unresolved_manager", "source_conflict", "cost_budget_exceeded",
-        "partial_failure", "verification_failed", "dry_run_active", "delete_blocked_legal_hold"
+        "partial_failure", "verification_failed", "dry_run_active", "delete_blocked_legal_hold",
+        "intake_low_confidence", "intake_not_lifecycle", "intake_override_attempt", "intake_record_required", "intake_backend_unavailable"
       ]
     },
     "ToolName": {
@@ -105,7 +106,8 @@
         "get_service_provider_config", "list_resource_types", "list_schemas",
         "list_users", "get_user", "provision_user", "update_user", "deprovision_user", "update_user_lifecycle",
         "get_user_custom_security_attributes", "update_user_custom_security_attributes",
-        "list_groups", "get_group", "create_group", "update_group", "delete_group", "add_group_members", "remove_group_member"
+        "list_groups", "get_group", "create_group", "update_group", "delete_group", "add_group_members", "remove_group_member",
+        "system_one"
       ]
     },
     "PolicyCheck": {

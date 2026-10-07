@@ -1,0 +1,347 @@
+{
+  "recordedAt": "2026-10-06T06:38:03Z",
+  "model": "claude-fable-5-1",
+  "effort": "xhigh",
+  "claudeCodeVersion": "2.1.268",
+  "entraScimMcpVersion": "0.3.0",
+  "policyId": "contoso-lifecycle-policy",
+  "policyVersion": "1.2.0",
+  "seedSha256": "d7989f15f0068ba1",
+  "scenarios": [
+    {
+      "id": "S0a",
+      "skill": "lifecycle-intake",
+      "recordedAt": "2026-10-06T06:38:04Z",
+      "turns": [
+        {
+          "sessionId": "b529efb8-b1a5-4eb4-92e2-30d5ad10d720",
+          "model": "claude-fable-5-1",
+          "numTurns": 13,
+          "durationMs": 116177,
+          "costUsd": 1.6186862499999997
+        }
+      ],
+      "assertions": {
+        "passed": 30,
+        "failed": 0
+      },
+      "status": "ok",
+      "decision": "allow",
+      "outcome": "not_executed",
+      "riskLevel": "low",
+      "correlationId": "elg-intake-7k2mq9",
+      "toolCalls": {
+        "count": 1,
+        "budget": 2
+      },
+      "observedMcpCalls": 1,
+      "probes": {},
+      "leakSites": [],
+      "transcript": "demo/recordings/S0a.transcript.md",
+      "expectedWritten": true,
+      "boot": 1
+    },
+    {
+      "id": "S0b",
+      "skill": "lifecycle-intake",
+      "recordedAt": "2026-10-06T06:40:10Z",
+      "turns": [
+        {
+          "sessionId": "42104a3f-b33c-4e25-b125-406eda937bf1",
+          "model": "claude-fable-5-1",
+          "numTurns": 13,
+          "durationMs": 184155,
+          "costUsd": 1.9778989999999999
+        }
+      ],
+      "assertions": {
+        "passed": 29,
+        "failed": 0
+      },
+      "status": "ok",
+      "decision": "require_manual_review",
+      "outcome": "not_executed",
+      "riskLevel": "medium",
+      "correlationId": "elg-intake-x4q9tz",
+      "toolCalls": {
+        "count": 1,
+        "budget": 2
+      },
+      "observedMcpCalls": 1,
+      "probes": {},
+      "leakSites": [],
+      "transcript": "demo/recordings/S0b.transcript.md",
+      "expectedWritten": true,
+      "boot": 1
+    },
+    {
+      "id": "S0c",
+      "skill": "lifecycle-intake",
+      "recordedAt": "2026-10-06T06:43:20Z",
+      "turns": [
+        {
+          "sessionId": "e8608336-c321-43b1-8d15-6da316320638",
+          "model": "claude-fable-5-1",
+          "numTurns": 9,
+          "durationMs": 136653,
+          "costUsd": 1.44557225
+        }
+      ],
+      "assertions": {
+        "passed": 29,
+        "failed": 0
+      },
+      "status": "ok",
+      "decision": "deny",
+      "outcome": "blocked",
+      "riskLevel": "high",
+      "correlationId": "elg-intake-k7m2qx",
+      "toolCalls": {
+        "count": 1,
+        "budget": 2
+      },
+      "observedMcpCalls": 1,
+      "probes": {},
+      "leakSites": [],
+      "transcript": "demo/recordings/S0c.transcript.md",
+      "expectedWritten": true,
+      "boot": 1
+    },
+    {
+      "id": "S1",
+      "skill": "joiner-orchestrator",
+      "recordedAt": "2026-10-06T06:45:42Z",
+      "turns": [
+        {
+          "sessionId": "8e97d3ff-f45c-48fc-8b81-278adf2300c1",
+          "model": "claude-fable-5-1",
+          "numTurns": 9,
+          "durationMs": 156847,
+          "costUsd": 1.921996
+        }
+      ],
+      "assertions": {
+        "passed": 25,
+        "failed": 0
+      },
+      "status": "ok",
+      "decision": "deny",
+      "outcome": "blocked",
+      "riskLevel": "high",
+      "correlationId": "elg-WD-000123-k7m2qx",
+      "toolCalls": {
+        "count": 0,
+        "budget": 20
+      },
+      "observedMcpCalls": 0,
+      "probes": {},
+      "leakSites": [],
+      "transcript": "demo/recordings/S1.transcript.md",
+      "expectedWritten": true,
+      "boot": 1
+    },
+    {
+      "id": "S2",
+      "skill": "joiner-orchestrator",
+      "recordedAt": "2026-10-06T06:48:24Z",
+      "turns": [
+        {
+          "sessionId": "60de6e6a-0d67-40b6-83f0-1ab60146ea7d",
+          "model": "claude-fable-5-1",
+          "numTurns": 14,
+          "durationMs": 220834,
+          "costUsd": 2.26895475
+        },
+        {
+          "sessionId": "60de6e6a-0d67-40b6-83f0-1ab60146ea7d",
+          "model": "claude-fable-5-1",
+          "numTurns": 12,
+          "durationMs": 209626,
+          "costUsd": 1.404036
+        }
+      ],
+      "assertions": {
+        "passed": 29,
+        "failed": 0
+      },
+      "status": "ok",
+      "decision": "allow_with_approval",
+      "outcome": "completed",
+      "riskLevel": "medium",
+      "correlationId": "elg-WD-000123-k7m2qx",
+      "toolCalls": {
+        "count": 15,
+        "budget": 20
+      },
+      "observedMcpCalls": 15,
+      "probes": {
+        "pre": null,
+        "post": null
+      },
+      "leakSites": [
+        "assistant"
+      ],
+      "transcript": "demo/recordings/S2.transcript.md",
+      "expectedWritten": true,
+      "boot": 1
+    },
+    {
+      "id": "S3a",
+      "skill": "mover-orchestrator",
+      "recordedAt": "2026-10-06T06:55:46Z",
+      "turns": [
+        {
+          "sessionId": "2f1f5797-9f28-42cd-8815-c8dcdc2c1352",
+          "model": "claude-fable-5-1",
+          "numTurns": 15,
+          "durationMs": 213326,
+          "costUsd": 2.165306
+        }
+      ],
+      "assertions": {
+        "passed": 25,
+        "failed": 0
+      },
+      "status": "ok",
+      "decision": "deny",
+      "outcome": "blocked",
+      "riskLevel": "high",
+      "correlationId": "elg-WD-000103-k3m9xq",
+      "toolCalls": {
+        "count": 5,
+        "budget": 20
+      },
+      "observedMcpCalls": 5,
+      "probes": {
+        "pre": null,
+        "post": null
+      },
+      "leakSites": [],
+      "transcript": "demo/recordings/S3a.transcript.md",
+      "expectedWritten": true,
+      "boot": 2
+    },
+    {
+      "id": "S3b",
+      "skill": "mover-orchestrator",
+      "recordedAt": "2026-10-06T06:59:26Z",
+      "turns": [
+        {
+          "sessionId": "3f6d6b10-e3dd-483e-aae1-b020c7b88626",
+          "model": "claude-fable-5-1",
+          "numTurns": 14,
+          "durationMs": 158116,
+          "costUsd": 1.9231515
+        },
+        {
+          "sessionId": "3f6d6b10-e3dd-483e-aae1-b020c7b88626",
+          "model": "claude-fable-5-1",
+          "numTurns": 12,
+          "durationMs": 198032,
+          "costUsd": 1.428608
+        }
+      ],
+      "assertions": {
+        "passed": 29,
+        "failed": 0
+      },
+      "status": "ok",
+      "decision": "allow_with_approval",
+      "outcome": "completed",
+      "riskLevel": "medium",
+      "correlationId": "elg-WD-000104-k7m2qx",
+      "toolCalls": {
+        "count": 15,
+        "budget": 20
+      },
+      "observedMcpCalls": 15,
+      "probes": {
+        "pre": null,
+        "post": null
+      },
+      "leakSites": [],
+      "transcript": "demo/recordings/S3b.transcript.md",
+      "expectedWritten": true,
+      "boot": 2
+    },
+    {
+      "id": "S3c",
+      "skill": "mover-orchestrator",
+      "recordedAt": "2026-10-06T07:05:35Z",
+      "turns": [
+        {
+          "sessionId": "6c8488c4-c324-4d83-a11e-461ccde51fb4",
+          "model": "claude-fable-5-1",
+          "numTurns": 15,
+          "durationMs": 168867,
+          "costUsd": 1.84813525
+        }
+      ],
+      "assertions": {
+        "passed": 28,
+        "failed": 0
+      },
+      "status": "ok",
+      "decision": "allow",
+      "outcome": "completed",
+      "riskLevel": "low",
+      "correlationId": "elg-WD-000108-k7m2qa",
+      "toolCalls": {
+        "count": 6,
+        "budget": 20
+      },
+      "observedMcpCalls": 6,
+      "probes": {
+        "pre": null,
+        "post": null
+      },
+      "leakSites": [],
+      "transcript": "demo/recordings/S3c.transcript.md",
+      "expectedWritten": true,
+      "boot": 2
+    },
+    {
+      "id": "S4",
+      "skill": "leaver-orchestrator",
+      "recordedAt": "2026-10-06T07:08:31Z",
+      "turns": [
+        {
+          "sessionId": "80f28ef7-8a44-4ff2-9b0a-64b69c611383",
+          "model": "claude-fable-5-1",
+          "numTurns": 8,
+          "durationMs": 87588,
+          "costUsd": 0.9890075
+        },
+        {
+          "sessionId": "80f28ef7-8a44-4ff2-9b0a-64b69c611383",
+          "model": "claude-fable-5-1",
+          "numTurns": 13,
+          "durationMs": 194720,
+          "costUsd": 1.4323125
+        }
+      ],
+      "assertions": {
+        "passed": 31,
+        "failed": 0
+      },
+      "status": "ok",
+      "decision": "allow_with_approval",
+      "outcome": "completed",
+      "riskLevel": "high",
+      "correlationId": "elg-WD-000107-k7m2qp",
+      "toolCalls": {
+        "count": 11,
+        "budget": 25
+      },
+      "observedMcpCalls": 11,
+      "probes": {
+        "pre": null,
+        "post": null
+      },
+      "leakSites": [],
+      "transcript": "demo/recordings/S4.transcript.md",
+      "expectedWritten": true,
+      "boot": 3
+    }
+  ]
+}

@@ -1,12 +1,11 @@
 #!/usr/bin/env node
-// Runs the S2 (joiner), S3a/S3b (mover) and S4 (leaver) tool sequences against
+// Runs the S2 (joiner), S3a/S3b/S3c (mover) and S4 (leaver) tool sequences against
 // the seeded mock through the real entra-scim-mcp server, as an MCP client and
 // with no LLM in the loop. Proves the call shapes the skills prescribe are
 // accepted end to end and counts calls per scenario against the skill budgets.
 //
-//   npm run mock          (terminal 1, fresh boot)
-//   npm run seed:links    (terminal 2)
-//   npm run verify:sequences
+//   npm run demo:up            (terminal 1, fresh boot: mock + links)
+//   npm run verify:sequences   (terminal 2)
 //
 // Env: ENTRA_SCIM_BASE_URL (default http://127.0.0.1:8990, loopback only),
 // ENTRA_SCIM_STATIC_TOKEN (default dev-token). Exit 1 on any assertion failure.
@@ -16,7 +15,7 @@ import { StdioClientTransport, getDefaultEnvironment } from "@modelcontextprotoc
 
 const BASE_URL = process.env.ENTRA_SCIM_BASE_URL?.trim() || "http://127.0.0.1:8990";
 const TOKEN = process.env.ENTRA_SCIM_STATIC_TOKEN?.trim() || "dev-token";
-const MCP_PACKAGE = "entra-scim-mcp@0.2.1";
+const MCP_PACKAGE = "entra-scim-mcp@0.3.0";
 const EXPECTED_TOOL_COUNT = 18;
 
 const ENTERPRISE = "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User";
@@ -73,7 +72,7 @@ const isoNowNoMillis = () => new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
 // MCP client with per-scenario call accounting
 // ---------------------------------------------------------------------------
 
-const client = new Client({ name: "verify-tool-sequences", version: "0.1.0" });
+const client = new Client({ name: "verify-tool-sequences", version: "0.2.0" });
 let calls = 0;
 let byTool = {};
 const log = [];
@@ -280,6 +279,25 @@ async function s3bMover() {
   assert(csaAfter.Employment?.ContractType === "Employee", "ContractType must be untouched by the move", csaAfter);
 }
 
+async function s3cMover() {
+  const alex = await resolveUser(upn("alex.wilber"));
+  const before = await ok("get_user", { id: alex.id });
+  assert(before.title === "Software Engineer", "alex should start as Software Engineer (the record's previous.worker.jobTitle)", before);
+  const csa = await csaOf(alex.id, ["Employment", "Compliance"]);
+  assert(csa.Employment?.ContractType === "Employee", "alex's CSAs should be readable before the change", csa);
+  const heldBefore = sortedNames(await membershipsOf(alex.id));
+  const expectedHeld = [G.allEmployees, G.engUsers].sort();
+  assert(deepEqual(heldBefore, expectedHeld), "alex's starting memberships differ from the seed", { expected: expectedHeld, observed: heldBefore });
+
+  // Low risk (RS-08 only): no approval reference, no gate, one write, one verification read.
+  await ok("update_user", { id: alex.id, operations: [{ op: "replace", path: "title", value: "Senior Software Engineer" }] });
+
+  const after = await ok("get_user", { id: alex.id });
+  assert(after.title === "Senior Software Engineer", "title was not updated", after);
+  assert(after.active === true, "active must be unchanged by a title change", after);
+  assert(after[ENTERPRISE]?.department === "Engineering", "department must be unchanged by a title change", after);
+}
+
 async function s4Leaver() {
   const nestor = await resolveUser(upn("nestor.wilke"));
   const before = await ok("get_user", { id: nestor.id });
@@ -362,6 +380,7 @@ async function main() {
       allOk = (await runScenario("S2 joiner", s2Joiner)) && allOk;
       allOk = (await runScenario("S3a mover precondition", s3aMoverPrecondition)) && allOk;
       allOk = (await runScenario("S3b mover", s3bMover)) && allOk;
+      allOk = (await runScenario("S3c mover", s3cMover)) && allOk;
       allOk = (await runScenario("S4 leaver", s4Leaver)) && allOk;
     }
   } finally {

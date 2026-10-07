@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "entra-scim-live": {
+      "command": "node",
+      "args": ["scripts/mcp-live.mjs"]
+    },
+    "entra-lifecycle-intake": {
+      "command": "node",
+      "args": ["demo/intake/server.mjs"],
+      "env": {
+        "LIFECYCLE_INTAKE_BACKEND": "stub"
+      }
+    }
+  }
+}

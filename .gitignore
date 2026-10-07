@@ -1,8 +1,9 @@
 # Internal working docs (never published)
 *prd*.md
 *PRD*.md
-Blogpost*.md
-Blogpost*.MD
+*[Bb]logpost*.md
+*[Bb]logpost*.MD
+*[Bb]logpost*.svg
 REVIEW.md
 # Dependencies / build
 node_modules/
@@ -10,6 +11,7 @@ dist/
 coverage/
 # Runtime output
 captures/
+demo/recordings/.run/
 *.jsonl
 *.log
 npm-debug.log*
@@ -27,3 +29,6 @@ certs/
 Thumbs.db
 # Claude Code per-user overrides
 .claude/settings.local.json
+
+# MCPJam screen recordings (large binaries; kept locally for the blog)
+demo/recordings/video/

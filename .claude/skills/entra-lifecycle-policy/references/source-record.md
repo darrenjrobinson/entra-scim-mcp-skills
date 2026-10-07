@@ -2,6 +2,8 @@
 
 The input every orchestrator consumes. One shape per event. All fields are strings unless noted. Anything the policy needs must be in the record or supplied by the operator in chat; the skills never invent values.
 
+Free text is not a record. A sentence such as "Lidia is moving to Engineering from Monday" goes to `lifecycle-intake`, which classifies it and asks for one of the records below from an authoritative source; no skill derives a record from prose, however complete the sentence looks.
+
 Common envelope:
 
 | field | required | meaning |

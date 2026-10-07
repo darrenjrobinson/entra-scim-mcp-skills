@@ -1,16 +1,16 @@
 {
   "recordVersion": "1.0",
-  "correlationId": "elg-WD-000107-gpjli4",
+  "correlationId": "elg-WD-000107-k7m2qp",
   "supersedes": null,
   "skill": "leaver-orchestrator",
-  "skillVersion": "0.1.0",
+  "skillVersion": "0.2.0",
   "policyId": "contoso-lifecycle-policy",
-  "policyVersion": "1.0.0",
+  "policyVersion": "1.2.0",
   "event": "leaver",
   "host": "claude-code",
   "dryRun": false,
-  "startedAt": "2026-09-20T09:03:35.005Z",
-  "completedAt": "2026-09-20T09:12:21.083Z",
+  "startedAt": "2026-10-06T07:08:31.141Z",
+  "completedAt": "2026-10-06T07:10:34.918Z",
   "clockSource": "resourceMeta",
   "source": {
     "system": "workday",
@@ -18,7 +18,7 @@
   },
   "target": {
     "userName": "nestor.wilke@contoso.local",
-    "id": "5fed6fb6-4405-4f8a-8ceb-6b79b40b3150",
+    "id": "1a613511-183f-4351-9a2a-f9f020ce263f",
     "displayName": "Nestor Wilke"
   },
   "decision": "allow_with_approval",
@@ -28,114 +28,145 @@
     {
       "id": "CHK-01",
       "rule": "policyVersion",
-      "input": "contoso-lifecycle-policy 1.0.0",
-      "evidence": "entra-lifecycle-policy skill, policy/lifecycle-policy.json; major version 1",
+      "input": "contoso-lifecycle-policy 1.2.0",
+      "evidence": "policy: entra-lifecycle-policy skill, policy/lifecycle-policy.json read this run; major version 1",
       "result": "pass"
     },
     {
       "id": "CHK-02",
       "rule": "authoritativeSources[id=workday]",
       "input": "sourceSystem=workday; sourceRecordId=WD-000107; eventType=leaver",
-      "evidence": "source record: matches recordIdPattern ^WD-[0-9]{6}$; leaver in events",
+      "evidence": "source record: matches ^WD-[0-9]{6}$; leaver in events",
       "result": "pass"
     },
     {
       "id": "CHK-03",
-      "rule": "offboardingOrder (required leaver fields)",
-      "input": "target.userName=nestor.wilke@contoso.local; leaver.mode=immediate; leaver.effectiveDateTime=2026-09-20T09:00:00Z",
-      "evidence": "source record: mode in [scheduled, immediate, delete]; effectiveDateTime is ISO-8601 UTC",
+      "rule": "leaver-orchestrator.inputs.leaver",
+      "input": "mode=immediate; effectiveDateTime=2026-09-20T09:00:00Z",
+      "evidence": "source record: mode in [scheduled, immediate, delete]; ISO-8601 UTC; target.userName present",
       "result": "pass"
     },
     {
       "id": "CHK-04",
       "rule": "approvalThresholds.escalations.ambiguousIdentity",
       "subject": "nestor.wilke@contoso.local",
-      "input": "1 match",
-      "evidence": "call #1: list_users userName eq nestor.wilke@contoso.local -> totalResults 1, id 5fed6fb6-4405-4f8a-8ceb-6b79b40b3150, active=true",
+      "input": "userName eq nestor.wilke@contoso.local",
+      "evidence": "call #1: list_users -> totalResults 1, active=true, id 1a613511-183f-4351-9a2a-f9f020ce263f",
       "result": "pass"
     },
     {
       "id": "CHK-05",
       "rule": "offboardingOrder.modeSelection",
-      "subject": "source.leaver.mode",
-      "input": "immediate",
-      "evidence": "source record: mode declared, not inferred; matched default modeSelection entry (when: []) -> immediate; steps [disable, setLeaveDate, removeMemberships, verifyResidualAccess]",
+      "input": "source.leaver.mode=immediate",
+      "evidence": "policy: delete and scheduled entries do not match; default entry selects immediate; steps [disable, setLeaveDate, removeMemberships, verifyResidualAccess]; mode not inferred from dates",
       "result": "pass"
     },
     {
       "id": "CHK-06",
-      "rule": "retainedAccessRules[RET-001]",
-      "subject": "SG-Legal-Hold",
-      "input": "held; retainWhen []",
-      "evidence": "call #3: SG-Legal-Hold id f3af7f31-ab7a-4400-9519-96478cebb643 held; policy: retainWhen [] = always -> retained, releaseBy legal",
+      "rule": "leaver-orchestrator.step2.read",
+      "subject": "1a613511-183f-4351-9a2a-f9f020ce263f",
+      "input": "department, manager, employeeLeaveDateTime, memberships",
+      "evidence": "call #2: get_user -> department Engineering, manager 0d9502da-065e-41f0-b28b-241b1f4e72d5, employeeNumber 100007, employeeLeaveDateTime absent, active=true; call #3: list_groups members.value eq userId -> totalResults 4: All Employees 57502724-bfa0-483e-a3dc-dee5dcae2f44, SG-Engineering-Users d4c6d193-5111-4101-a864-a9bd2c53eca5, SG-Engineering-ProdDeploy f63e87d3-2823-42b4-ae13-813385d5c8b9, SG-Legal-Hold 1dfba529-97d4-4859-9cdc-7690ba615c9d",
       "result": "pass"
     },
     {
       "id": "CHK-07",
-      "rule": "retainedAccessRules[RET-002]",
-      "subject": "All Employees",
+      "rule": "retainedAccessRules[RET-001]",
+      "subject": "SG-Legal-Hold",
       "input": "held; leaver.mode=immediate",
-      "evidence": "call #3: All Employees id cd9d11ee-d6d6-4fd8-b686-a496b4151408 held; policy: retainWhen leaver.mode equals scheduled is false -> not retained, in removal set",
+      "evidence": "policy: RET-001 retainWhen [] always holds, SG-Legal-Hold retained, releaseBy legal; RET-002 retainWhen leaver.mode equals scheduled is false, All Employees not retained",
       "result": "pass"
     },
     {
       "id": "CHK-08",
       "rule": "offboardingOrder.removalOrder",
-      "input": "held 4, retained 1, remove 3",
-      "evidence": "call #3 + policy groupCatalog.classification: SG-Engineering-ProdDeploy (privileged) -> SG-Engineering-Users (business) -> All Employees (baseline); no uncatalogued groups",
+      "input": "held minus retained = 3 groups",
+      "evidence": "policy: SG-Engineering-ProdDeploy privileged, SG-Engineering-Users business, All Employees baseline; all in groupCatalog; no uncatalogued groups",
       "result": "pass"
     },
     {
       "id": "CHK-09",
-      "rule": "offboardingOrder.deleteBlockedWhen",
-      "subject": "csa.current.Compliance.LegalHold",
-      "input": "true",
-      "evidence": "call #4: get_user_custom_security_attributes Compliance -> DataClassification=Restricted, LegalHold=true (CSA object in call #2 ignored per customSecurityAttributes.trustOnlyDedicatedRead); mode is immediate so not blocking; any delete would be denied",
-      "result": "warn"
-    },
-    {
-      "id": "CHK-10",
       "rule": "riskModel.signals[RS-10]",
       "subject": "leaver.mode.immediate",
-      "input": "fired",
-      "evidence": "policy: riskLevel medium",
+      "input": "immediate",
+      "evidence": "source record; riskLevel medium",
       "result": "pass"
     },
     {
-      "id": "CHK-11",
+      "id": "CHK-10",
       "rule": "riskModel.signals[RS-12]",
       "subject": "leaver.targetHoldsPrivilegedGroup",
       "input": "SG-Engineering-ProdDeploy",
-      "evidence": "call #3: held; policy: privilegedGroups.displayNames contains SG-Engineering-ProdDeploy -> riskLevel high",
+      "evidence": "call #3: held; policy: privilegedGroups.displayNames contains it; riskLevel high",
+      "result": "warn"
+    },
+    {
+      "id": "CHK-11",
+      "rule": "riskModel.signals[RS-13]",
+      "subject": "csa.current.Compliance.DataClassification",
+      "input": "Restricted",
+      "evidence": "call #4: get_user_custom_security_attributes attributeSets=[Compliance] -> DataClassification=Restricted; riskLevel high",
       "result": "warn"
     },
     {
       "id": "CHK-12",
-      "rule": "approvalThresholds.approvalRef",
-      "subject": "REQ-50021",
-      "input": "scope run; approver megan.bowen@contoso.local; sourceRecordId WD-000107",
-      "evidence": "source record approvals[0]: matches ^(CHG|REQ|INC)-[0-9]{5,}$; requiredFields present; sourceRecordId matches; scope run required for medium/high -> valid; leaver:delete not required in immediate mode",
+      "rule": "offboardingOrder.deleteBlockedWhen",
+      "subject": "csa.current.Compliance.LegalHold",
+      "input": "true",
+      "evidence": "call #4: LegalHold=true; mode is immediate so no deprovision planned; would block delete mode",
       "result": "pass"
     },
     {
       "id": "CHK-13",
-      "rule": "approvalThresholds.operatorConfirmRequired[high]",
-      "input": "approve elg-WD-000107-gpjli4",
-      "evidence": "operator message after preview matched operatorConfirmPhrase exactly",
+      "rule": "approvalThresholds.approvalRef",
+      "subject": "REQ-50021",
+      "input": "scope=run; approver=megan.bowen@contoso.local; sourceRecordId=WD-000107",
+      "evidence": "source record approvals[0]: matches ^(CHG|REQ|INC)-[0-9]{5,}$; requiredFields present; sourceRecordId matches; scope run satisfies decisionByRiskLevel.high",
       "result": "pass"
     },
     {
       "id": "CHK-14",
-      "rule": "costThresholds.maxToolCallsPerRun.leaver-orchestrator",
-      "input": "11 of 25",
-      "evidence": "call tally: 6 reads, 5 writes; 44% of budget, below warnAtPercent 80",
+      "rule": "approvalThresholds.operatorConfirmRequired",
+      "input": "riskLevel=high -> true",
+      "evidence": "operator message: approve elg-WD-000107-k7m2qp; exact match to operatorConfirmPhrase; received after the preview, before any write",
       "result": "pass"
     },
     {
       "id": "CHK-15",
+      "rule": "costThresholds.maxToolCallsPerRun.leaver-orchestrator",
+      "input": "11 of 25",
+      "evidence": "calls #1 to #11; 44%, below warnAtPercent 80",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-16",
+      "rule": "leaver-orchestrator.inputs.leaver.effectiveDateTime",
+      "subject": "effectiveDateTime",
+      "input": "2026-09-20T09:00:00Z",
+      "evidence": "source record: 16 days before run date 2026-10-06; mode taken from record as supplied, not inferred; on a live tenant a Lifecycle Workflow keyed on employeeLeaveDateTime could fire immediately",
+      "result": "warn"
+    },
+    {
+      "id": "CHK-17",
       "rule": "evaluation.decisionPrecedence",
-      "input": "allow_with_approval (risk high)",
-      "evidence": "riskModel.aggregate=max(RS-10 medium, RS-12 high)=high; decisionByRiskLevel[high]=allow_with_approval; REQ-50021 valid (CHK-12); operator confirmed (CHK-13)",
+      "input": "allow_with_approval",
+      "evidence": "riskModel.aggregate=max of RS-10 medium, RS-12 high, RS-13 high = high; decisionByRiskLevel.high=allow_with_approval; REQ-50021 valid and used; operator confirmed; calls #5 to #9 all ok",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-18",
+      "rule": "offboardingOrder.steps.immediate[verifyResidualAccess]",
+      "subject": "1a613511-183f-4351-9a2a-f9f020ce263f",
+      "input": "returned minus retained",
+      "evidence": "call #10: list_groups members.value eq userId -> totalResults 1: SG-Legal-Hold 1dfba529-97d4-4859-9cdc-7690ba615c9d; residual after removing retained is empty",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-19",
+      "rule": "auditRequirements.verificationRequiredBeforeCompleted",
+      "subject": "1a613511-183f-4351-9a2a-f9f020ce263f",
+      "input": "active",
+      "evidence": "call #11: get_user attributes=[active] -> active=false",
       "result": "pass"
     }
   ],
@@ -155,7 +186,7 @@
       "seq": 1,
       "tool": "update_user",
       "target": "nestor.wilke@contoso.local",
-      "argsSummary": "id=5fed6fb6-4405-4f8a-8ceb-6b79b40b3150; operations=[replace active=false]",
+      "argsSummary": "id=1a613511-183f-4351-9a2a-f9f020ce263f; operations=[replace active=false]",
       "purpose": "disable account",
       "policyBasis": [
         "offboardingOrder.steps.immediate[disable]",
@@ -167,7 +198,7 @@
       "seq": 2,
       "tool": "update_user_lifecycle",
       "target": "nestor.wilke@contoso.local",
-      "argsSummary": "id=5fed6fb6-4405-4f8a-8ceb-6b79b40b3150; employeeLeaveDateTime=2026-09-20T09:00:00Z",
+      "argsSummary": "id=1a613511-183f-4351-9a2a-f9f020ce263f; employeeLeaveDateTime=2026-09-20T09:00:00Z",
       "purpose": "set leave date",
       "policyBasis": [
         "offboardingOrder.steps.immediate[setLeaveDate]",
@@ -179,11 +210,11 @@
       "seq": 3,
       "tool": "remove_group_member",
       "target": "SG-Engineering-ProdDeploy",
-      "argsSummary": "id=30ea4b40-79ff-46c2-874e-8955045c2676; memberId=5fed6fb6-4405-4f8a-8ceb-6b79b40b3150",
+      "argsSummary": "id=f63e87d3-2823-42b4-ae13-813385d5c8b9; memberId=1a613511-183f-4351-9a2a-f9f020ce263f",
       "purpose": "remove privileged membership",
       "policyBasis": [
-        "offboardingOrder.steps.immediate[removeMemberships]",
-        "offboardingOrder.removalOrder[privileged]"
+        "offboardingOrder.removalOrder",
+        "groupCatalog[SG-Engineering-ProdDeploy].classification"
       ],
       "status": "executed"
     },
@@ -191,11 +222,11 @@
       "seq": 4,
       "tool": "remove_group_member",
       "target": "SG-Engineering-Users",
-      "argsSummary": "id=0a6279b0-f28b-4851-b328-df7d2638fc6b; memberId=5fed6fb6-4405-4f8a-8ceb-6b79b40b3150",
+      "argsSummary": "id=d4c6d193-5111-4101-a864-a9bd2c53eca5; memberId=1a613511-183f-4351-9a2a-f9f020ce263f",
       "purpose": "remove business membership",
       "policyBasis": [
-        "offboardingOrder.steps.immediate[removeMemberships]",
-        "offboardingOrder.removalOrder[business]"
+        "offboardingOrder.removalOrder",
+        "groupCatalog[SG-Engineering-Users].classification"
       ],
       "status": "executed"
     },
@@ -203,12 +234,12 @@
       "seq": 5,
       "tool": "remove_group_member",
       "target": "All Employees",
-      "argsSummary": "id=cd9d11ee-d6d6-4fd8-b686-a496b4151408; memberId=5fed6fb6-4405-4f8a-8ceb-6b79b40b3150",
+      "argsSummary": "id=57502724-bfa0-483e-a3dc-dee5dcae2f44; memberId=1a613511-183f-4351-9a2a-f9f020ce263f",
       "purpose": "remove baseline membership",
       "policyBasis": [
-        "offboardingOrder.steps.immediate[removeMemberships]",
-        "offboardingOrder.removalOrder[baseline]",
-        "retainedAccessRules[RET-002] not matched"
+        "offboardingOrder.removalOrder",
+        "groupCatalog[All Employees].classification",
+        "retainedAccessRules[RET-002]"
       ],
       "status": "executed"
     },
@@ -216,7 +247,7 @@
       "seq": 6,
       "tool": "list_groups",
       "target": "nestor.wilke@contoso.local",
-      "argsSummary": "filter members.value eq 5fed6fb6-4405-4f8a-8ceb-6b79b40b3150; attributes=[id, displayName]",
+      "argsSummary": "filter members.value eq 1a613511-183f-4351-9a2a-f9f020ce263f; attributes id,displayName",
       "purpose": "verify residual access equals retained set",
       "policyBasis": [
         "offboardingOrder.steps.immediate[verifyResidualAccess]",
@@ -228,7 +259,7 @@
       "seq": 7,
       "tool": "get_user",
       "target": "nestor.wilke@contoso.local",
-      "argsSummary": "id=5fed6fb6-4405-4f8a-8ceb-6b79b40b3150; attributes=[active]",
+      "argsSummary": "id=1a613511-183f-4351-9a2a-f9f020ce263f; attributes=[active]",
       "purpose": "verify account disabled",
       "policyBasis": [
         "auditRequirements.verificationRequiredBeforeCompleted"
@@ -243,8 +274,8 @@
       "phase": "resolve",
       "tool": "list_users",
       "status": "ok",
-      "at": "2026-09-20T09:04:30.136Z",
-      "resultSummary": "filter userName eq nestor.wilke@contoso.local; totalResults 1; id 5fed6fb6-4405-4f8a-8ceb-6b79b40b3150; active=true"
+      "at": "2026-10-06T07:08:31.413Z",
+      "resultSummary": "filter userName eq nestor.wilke@contoso.local; totalResults 1; id 1a613511-183f-4351-9a2a-f9f020ce263f; active=true"
     },
     {
       "call": 2,
@@ -252,8 +283,8 @@
       "phase": "read",
       "tool": "get_user",
       "status": "ok",
-      "at": "2026-09-20T09:04:30.136Z",
-      "resultSummary": "active=true; department Engineering; employeeNumber 100007; manager a6716bea-795b-4742-87c3-cfdf16070ca5; employeeLeaveDateTime absent; CSA object ignored"
+      "at": "2026-10-06T07:08:31.413Z",
+      "resultSummary": "department Engineering; manager 0d9502da-065e-41f0-b28b-241b1f4e72d5; employeeNumber 100007; title Senior Site Reliability Engineer; employeeLeaveDateTime absent; active=true; CSA object in payload ignored per trustOnlyDedicatedRead"
     },
     {
       "call": 3,
@@ -261,8 +292,8 @@
       "phase": "read",
       "tool": "list_groups",
       "status": "ok",
-      "at": "2026-09-20T09:04:30.236Z",
-      "resultSummary": "filter members.value eq userId; totalResults 4: All Employees cd9d11ee-d6d6-4fd8-b686-a496b4151408, SG-Engineering-Users 0a6279b0-f28b-4851-b328-df7d2638fc6b, SG-Engineering-ProdDeploy 30ea4b40-79ff-46c2-874e-8955045c2676, SG-Legal-Hold f3af7f31-ab7a-4400-9519-96478cebb643"
+      "at": "2026-10-06T07:08:31.448Z",
+      "resultSummary": "filter members.value eq 1a613511-183f-4351-9a2a-f9f020ce263f; totalResults 4: All Employees, SG-Engineering-Users, SG-Engineering-ProdDeploy, SG-Legal-Hold"
     },
     {
       "call": 4,
@@ -270,8 +301,8 @@
       "phase": "read",
       "tool": "get_user_custom_security_attributes",
       "status": "ok",
-      "at": "2026-09-20T09:04:30.136Z",
-      "resultSummary": "attributeSets=[Compliance]; DataClassification=Restricted; LegalHold=true"
+      "at": "2026-10-06T07:08:31.413Z",
+      "resultSummary": "attributeSets [Compliance]; DataClassification=Restricted; LegalHold=true"
     },
     {
       "call": 5,
@@ -280,7 +311,7 @@
       "tool": "update_user",
       "status": "ok",
       "at": null,
-      "resultSummary": "ok=true; id 5fed6fb6-4405-4f8a-8ceb-6b79b40b3150; replace active=false"
+      "resultSummary": "ok=true; id 1a613511-183f-4351-9a2a-f9f020ce263f; replace active=false"
     },
     {
       "call": 6,
@@ -289,7 +320,7 @@
       "tool": "update_user_lifecycle",
       "status": "ok",
       "at": null,
-      "resultSummary": "ok=true; id 5fed6fb6-4405-4f8a-8ceb-6b79b40b3150; employeeLeaveDateTime=2026-09-20T09:00:00Z; noChanges not present"
+      "resultSummary": "ok=true; id 1a613511-183f-4351-9a2a-f9f020ce263f; employeeLeaveDateTime=2026-09-20T09:00:00Z; no noChanges flag"
     },
     {
       "call": 7,
@@ -298,7 +329,7 @@
       "tool": "remove_group_member",
       "status": "ok",
       "at": null,
-      "resultSummary": "ok=true; group 30ea4b40-79ff-46c2-874e-8955045c2676 (SG-Engineering-ProdDeploy); memberId 5fed6fb6-4405-4f8a-8ceb-6b79b40b3150"
+      "resultSummary": "ok=true; group f63e87d3-2823-42b4-ae13-813385d5c8b9 (SG-Engineering-ProdDeploy); memberId 1a613511-183f-4351-9a2a-f9f020ce263f"
     },
     {
       "call": 8,
@@ -307,7 +338,7 @@
       "tool": "remove_group_member",
       "status": "ok",
       "at": null,
-      "resultSummary": "ok=true; group 0a6279b0-f28b-4851-b328-df7d2638fc6b (SG-Engineering-Users); memberId 5fed6fb6-4405-4f8a-8ceb-6b79b40b3150"
+      "resultSummary": "ok=true; group d4c6d193-5111-4101-a864-a9bd2c53eca5 (SG-Engineering-Users); memberId 1a613511-183f-4351-9a2a-f9f020ce263f"
     },
     {
       "call": 9,
@@ -316,25 +347,25 @@
       "tool": "remove_group_member",
       "status": "ok",
       "at": null,
-      "resultSummary": "ok=true; group cd9d11ee-d6d6-4fd8-b686-a496b4151408 (All Employees); memberId 5fed6fb6-4405-4f8a-8ceb-6b79b40b3150"
+      "resultSummary": "ok=true; group 57502724-bfa0-483e-a3dc-dee5dcae2f44 (All Employees); memberId 1a613511-183f-4351-9a2a-f9f020ce263f"
     },
     {
       "call": 10,
-      "seq": 7,
-      "phase": "verify",
-      "tool": "get_user",
-      "status": "ok",
-      "at": "2026-09-20T09:12:21.083Z",
-      "resultSummary": "attributes=[active]; active=false"
-    },
-    {
-      "call": 11,
       "seq": 6,
       "phase": "verify",
       "tool": "list_groups",
       "status": "ok",
-      "at": "2026-09-20T09:04:30.236Z",
-      "resultSummary": "filter members.value eq userId; totalResults 1: SG-Legal-Hold f3af7f31-ab7a-4400-9519-96478cebb643"
+      "at": "2026-10-06T07:08:31.448Z",
+      "resultSummary": "filter members.value eq 1a613511-183f-4351-9a2a-f9f020ce263f; totalResults 1: SG-Legal-Hold 1dfba529-97d4-4859-9cdc-7690ba615c9d"
+    },
+    {
+      "call": 11,
+      "seq": 7,
+      "phase": "verify",
+      "tool": "get_user",
+      "status": "ok",
+      "at": "2026-10-06T07:10:34.918Z",
+      "resultSummary": "attributes=[active]; active=false"
     }
   ],
   "skippedActions": [],
@@ -343,15 +374,15 @@
       {
         "check": "residual access equals retained set",
         "tool": "list_groups",
-        "expected": "returned minus retained [SG-Legal-Hold] is empty",
-        "observed": "call #11: [SG-Legal-Hold f3af7f31-ab7a-4400-9519-96478cebb643]; residual after retained = []",
+        "expected": "[SG-Legal-Hold] (RET-001)",
+        "observed": "[SG-Legal-Hold 1dfba529-97d4-4859-9cdc-7690ba615c9d]; residual after retained = []",
         "result": "pass"
       },
       {
         "check": "account disabled",
         "tool": "get_user",
         "expected": "active=false",
-        "observed": "call #10: active=false",
+        "observed": "active=false",
         "result": "pass"
       }
     ],
@@ -362,35 +393,27 @@
       "nested or transitive group access",
       "application role assignments",
       "PIM eligibility",
-      "whether a Lifecycle Workflow was triggered by employeeLeaveDateTime",
-      "employeeLeaveDateTime value was not re-read (call #6 returned ok without noChanges; immediate-mode verification checks active only)"
+      "whether a Lifecycle Workflow was triggered by employeeLeaveDateTime"
     ]
   },
   "residualRisk": [
     {
       "id": "RR-01",
-      "description": "SG-Legal-Hold membership retained under RET-001; Compliance.LegalHold=true. Released only by Legal, never by lifecycle automation. Any delete-mode request is blocked by offboardingOrder.deleteBlockedWhen until the hold is cleared.",
+      "description": "SG-Legal-Hold (1dfba529-97d4-4859-9cdc-7690ba615c9d) retained under RET-001; release only by Legal. Compliance.LegalHold=true also blocks any delete-mode request for this user until released.",
       "severity": "medium",
       "owner": "legal",
       "dueBy": null
     },
     {
       "id": "RR-02",
-      "description": "Disabling the account blocks new sign-ins but does not revoke existing sessions or refresh tokens; the SCIM surface cannot show or revoke them. The user held SG-Engineering-ProdDeploy until call #7.",
+      "description": "Target held SG-Engineering-ProdDeploy (privileged) and carries DataClassification Restricted. Existing sign-in sessions, refresh tokens, app role assignments and PIM eligibility are outside the SCIM read surface and were not checked or revoked by this run.",
       "severity": "medium",
-      "owner": "identity-ops",
-      "dueBy": "2026-09-20"
-    },
-    {
-      "id": "RR-03",
-      "description": "Licences, mailbox, application role assignments and PIM eligibility are not visible through SCIM and were not touched by this run.",
-      "severity": "low",
       "owner": "identity-ops",
       "dueBy": null
     },
     {
-      "id": "RR-04",
-      "description": "The account remains in the tenant, disabled, with SG-Legal-Hold. employeeLeaveDateTime 2026-09-20T09:00:00Z is set; a Lifecycle Workflow keyed on it may fire and cannot be observed here.",
+      "id": "RR-03",
+      "description": "employeeLeaveDateTime was not re-read after call #6; immediate mode verifies only residual access and active. Call #6 returned ok without a noChanges flag. The value written (2026-09-20T09:00:00Z) is 16 days in the past, so on a live tenant a Lifecycle Workflow keyed on it could fire immediately.",
       "severity": "low",
       "owner": "identity-ops",
       "dueBy": null
@@ -410,39 +433,58 @@
     }
   },
   "nextSteps": [
-    "identity-ops: revoke sign-in sessions and refresh tokens for 5fed6fb6-4405-4f8a-8ceb-6b79b40b3150 via Microsoft Graph; reclaim licences and handle the mailbox (outside the SCIM surface).",
-    "legal: decide when the legal hold on Nestor Wilke can be released; SG-Legal-Hold stays until then (RET-001).",
-    "If deletion is later required: after Legal clears Compliance.LegalHold, submit a delete-mode record for WD-000107 with an approval of scope leaver:delete; the run will set supersedes=elg-WD-000107-gpjli4."
+    "Legal: release SG-Legal-Hold membership and clear Compliance.LegalHold when the hold ends; only then can a delete-mode request for WD-000107 proceed.",
+    "identity-ops: revoke sign-in sessions and confirm licence, mailbox, application role and PIM state for nestor.wilke@contoso.local outside SCIM.",
+    "No re-run is required; if one is ever needed, removals are idempotent and a 404 on remove_group_member means the membership is already gone."
   ],
-  "summary": "Nestor Wilke (nestor.wilke@contoso.local, id 5fed6fb6-4405-4f8a-8ceb-6b79b40b3150) was disabled, given employeeLeaveDateTime 2026-09-20T09:00:00Z, and removed from SG-Engineering-ProdDeploy, SG-Engineering-Users and All Employees. This was driven by Workday leaver record WD-000107 in immediate mode, reason resignation with final day worked. The sequence followed offboardingOrder.steps.immediate and removalOrder; the run was rated high risk by RS-12 (privileged group held) and RS-10, and was allowed by approval REQ-50021 (scope run) plus operator confirmation under approvalThresholds. SG-Legal-Hold was retained under RET-001 because retention is unconditional and Compliance.LegalHold is true, and the account was not deleted because the mode was immediate. Legal owns release of the hold; identity-ops should revoke sessions and reclaim licences, which SCIM cannot show; any future delete needs a leaver:delete approval and a cleared hold.",
   "details": {
     "mode": "immediate",
     "held": [
-      "All Employees",
-      "SG-Engineering-Users",
-      "SG-Engineering-ProdDeploy",
-      "SG-Legal-Hold"
+      {
+        "displayName": "All Employees",
+        "id": "57502724-bfa0-483e-a3dc-dee5dcae2f44",
+        "classification": "baseline"
+      },
+      {
+        "displayName": "SG-Engineering-Users",
+        "id": "d4c6d193-5111-4101-a864-a9bd2c53eca5",
+        "classification": "business"
+      },
+      {
+        "displayName": "SG-Engineering-ProdDeploy",
+        "id": "f63e87d3-2823-42b4-ae13-813385d5c8b9",
+        "classification": "privileged"
+      },
+      {
+        "displayName": "SG-Legal-Hold",
+        "id": "1dfba529-97d4-4859-9cdc-7690ba615c9d",
+        "classification": "business"
+      }
+    ],
+    "retained": [
+      {
+        "displayName": "SG-Legal-Hold",
+        "id": "1dfba529-97d4-4859-9cdc-7690ba615c9d",
+        "ruleId": "RET-001"
+      }
     ],
     "removed": [
       "SG-Engineering-ProdDeploy",
       "SG-Engineering-Users",
       "All Employees"
     ],
-    "retained": [
-      {
-        "displayName": "SG-Legal-Hold",
-        "id": "f3af7f31-ab7a-4400-9519-96478cebb643",
-        "ruleId": "RET-001",
-        "releaseBy": "legal"
-      }
-    ],
     "residual": [],
-    "csa": {
+    "csaCurrent": {
       "Compliance": {
         "DataClassification": "Restricted",
         "LegalHold": true
       }
     },
-    "operatorConfirmation": "approve elg-WD-000107-gpjli4"
-  }
+    "signalsFired": [
+      "RS-10",
+      "RS-12",
+      "RS-13"
+    ]
+  },
+  "summary": "Disabled nestor.wilke@contoso.local (id 1a613511-183f-4351-9a2a-f9f020ce263f), set employeeLeaveDateTime to 2026-09-20T09:00:00Z, and removed SG-Engineering-ProdDeploy, SG-Engineering-Users and All Employees, one call each. Workday leaver record WD-000107 (resignation, mode immediate) triggered the run. CHK-05 selected immediate mode, CHK-09 to CHK-11 rated it high (RS-10, RS-12 privileged holder, RS-13 Restricted classification), CHK-13 accepted REQ-50021 for scope run, CHK-14 recorded the operator confirmation, and CHK-18 and CHK-19 proved residual access is exactly SG-Legal-Hold and the account is inactive. SG-Legal-Hold was not removed because RET-001 retains it unconditionally, and Compliance.LegalHold is true, so any delete-mode request would be blocked. Legal owns release of the hold; identity-ops should revoke sign-in sessions and check licences, mailbox, app roles and PIM, which the SCIM surface cannot show."
 }

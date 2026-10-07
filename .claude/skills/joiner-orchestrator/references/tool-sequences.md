@@ -1,6 +1,6 @@
 # joiner-orchestrator: tool sequences
 
-Exact argument shapes for every call the joiner makes, in order, plus the errors each can return. Tool names and schemas are those of `entra-scim-mcp` 0.2.1. Ids are placeholders; resolve them every run.
+Exact argument shapes for every call the joiner makes, in order, plus the errors each can return. Tool names and schemas are those of `entra-scim-mcp` 0.3.0. Ids are placeholders; resolve them every run.
 
 ## Name derivation (`namingStandards`)
 

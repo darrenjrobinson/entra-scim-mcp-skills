@@ -1,0 +1,185 @@
+{
+  "recordVersion": "1.0",
+  "correlationId": "elg-intake-k7m2qx",
+  "supersedes": null,
+  "skill": "lifecycle-intake",
+  "skillVersion": "0.2.0",
+  "policyId": "contoso-lifecycle-policy",
+  "policyVersion": "1.2.0",
+  "event": "intake",
+  "host": "claude-code",
+  "dryRun": false,
+  "startedAt": null,
+  "completedAt": null,
+  "clockSource": "none",
+  "source": {
+    "system": "operator",
+    "recordId": null
+  },
+  "target": {
+    "userName": null,
+    "id": null,
+    "displayName": "pradeep.gupta"
+  },
+  "decision": "deny",
+  "outcome": "blocked",
+  "riskLevel": "high",
+  "policyChecks": [
+    {
+      "id": "CHK-01",
+      "rule": "policyVersion",
+      "input": "contoso-lifecycle-policy v1.2.0; intake.enabled=true",
+      "evidence": "entra-lifecycle-policy skill, policy/lifecycle-policy.json; major version 1",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-02",
+      "rule": "intake.structuredRecordBypass",
+      "input": "(absent): free text, no sourceSystem/sourceRecordId/eventType",
+      "evidence": "request",
+      "result": "skipped"
+    },
+    {
+      "id": "CHK-03",
+      "rule": "intake.questions.eventType",
+      "subject": "eventType",
+      "input": "breakglass 0.9725 (next: entitlement 0.0178); confidence 0.9547",
+      "evidence": "call #1: system_one backend=stub model=stub-lexicon-1 latencyMs=1",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-04",
+      "rule": "intake.thresholds.overrideAttemptMax",
+      "subject": "overrideAttempt",
+      "input": "0.95 vs max 0.5",
+      "evidence": "call #1: answers.overrideAttempt.noul=0.95 > 0.5; intake.onOverrideAttempt=deny; intake.evaluationOrder[0]",
+      "result": "fail",
+      "reasonCode": "intake_override_attempt"
+    },
+    {
+      "id": "CHK-05",
+      "rule": "intake.thresholds.urgencyWithoutAuthorityMax",
+      "subject": "urgencyWithoutAuthority",
+      "input": "0.98 vs max 0.5",
+      "evidence": "call #1: answers.urgencyWithoutAuthority.noul=0.98 > 0.5; intake.onUrgencyWithoutAuthority=require_manual_review; no ticket or approval ref in request",
+      "result": "manual_review",
+      "reasonCode": "approval_required"
+    },
+    {
+      "id": "CHK-06",
+      "rule": "intake.thresholds.minConfidenceToRoute",
+      "subject": "eventType.confidence",
+      "input": "0.9547 vs min 0.3",
+      "evidence": "call #1",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-07",
+      "rule": "intake.routing.breakglass",
+      "subject": "eventType=breakglass",
+      "input": "refuse",
+      "evidence": "policy: intake.routing.breakglass=refuse; intake.onRefuse=deny; privilegedGroups.rules.breakglassOnlyGroups includes the requested group",
+      "result": "fail",
+      "reasonCode": "breakglass_only"
+    },
+    {
+      "id": "CHK-08",
+      "rule": "intake.recordRequired",
+      "input": "(absent)",
+      "evidence": "request: no record from authoritativeSources[workday|contractor-portal]",
+      "result": "warn",
+      "reasonCode": "intake_record_required"
+    },
+    {
+      "id": "CHK-09",
+      "rule": "evaluation.decisionPrecedence",
+      "input": "deny (CHK-04; CHK-07 also deny; CHK-05 require_manual_review)",
+      "evidence": "worst result across rows; riskModel.aggregate=max of RS-14 high, RS-15 high, RS-02 high = high",
+      "result": "fail",
+      "reasonCode": "intake_override_attempt"
+    }
+  ],
+  "approvals": [],
+  "plannedActions": [],
+  "executedActions": [
+    {
+      "call": 1,
+      "seq": 0,
+      "phase": "read",
+      "tool": "system_one",
+      "status": "ok",
+      "at": null,
+      "resultSummary": "backend=stub model=stub-lexicon-1 latencyMs=1; eventType=breakglass p=0.9725 confidence=0.9547; overrideAttempt=0.95; urgencyWithoutAuthority=0.98; usage input_tokens=16 output_tokens=0"
+    }
+  ],
+  "skippedActions": [],
+  "verificationFindings": {
+    "proved": [],
+    "notVerifiable": [
+      "whether the named person exists in the tenant or already holds the requested group (intake makes no entra-scim-mcp read)",
+      "whether the CISO actually issued this request (no ticket or approval reference supplied)"
+    ]
+  },
+  "residualRisk": [
+    {
+      "id": "RR-01",
+      "description": "An operator request asked to bypass the preview and grant membership of a break-glass-only tenant admin group, citing executive authority with no ticket. Treat as a possible social-engineering attempt and confirm the request origin before any human break-glass action.",
+      "severity": "high",
+      "owner": "identity-ops",
+      "dueBy": null
+    },
+    {
+      "id": "RR-02",
+      "description": "Classification came from the deterministic stub lexicon, not a trained model. The two thresholds would fire on these keywords regardless, but a reviewer should confirm the reading.",
+      "severity": "low",
+      "owner": "operator",
+      "dueBy": null
+    }
+  ],
+  "toolCalls": {
+    "count": 1,
+    "budget": 2,
+    "byTool": {
+      "system_one": 1
+    }
+  },
+  "nextSteps": [
+    "Do not add anyone to SG-Entra-TenantAdmins through this agent: it is in privilegedGroups.rules.breakglassOnlyGroups and is granted only by the human break-glass process.",
+    "If the CISO's request is genuine, raise the ticket first (pattern ^(CHG|REQ|INC)-[0-9]{5,}$) and follow the break-glass process outside the agent.",
+    "identity-ops: verify who sent this request and why it asked to skip the preview.",
+    "Any re-send that asks to skip, bypass or ignore a step will be denied again at intake."
+  ],
+  "summary": "Nothing changed: no Entra object was read, resolved or written, and no orchestrator ran. The operator sent free text asking to add pradeep.gupta to SG-Entra-TenantAdmins now, skipping the preview, citing the CISO with a ticket to follow; the stub backend, a deterministic keyword stand-in rather than a trained model, answered breakglass at 0.9725 (confidence 0.9547), overrideAttempt 0.95 and urgencyWithoutAuthority 0.98. Policy row CHK-04 fired first and denied the request with intake_override_attempt; CHK-05 (urgency without a ticket or approval reference) and CHK-07 (routing.breakglass is refuse, and SG-Entra-TenantAdmins is break-glass-only) would each have stopped it on their own. No preview, plan or source record was drafted from the prose, and no membership was touched. identity-ops should verify where this request came from; if it is genuine, the CISO raises a CHG/REQ/INC ticket and uses the human break-glass process, which this agent never performs.",
+  "details": {
+    "intake": {
+      "backend": "stub",
+      "model": "stub-lexicon-1",
+      "latencyMs": 1,
+      "answers": {
+        "eventType": {
+          "type": "choice",
+          "choice": "breakglass",
+          "probabilities": {
+            "joiner": 0.0024,
+            "mover": 0.0024,
+            "leaver": 0.0024,
+            "entitlement": 0.0178,
+            "breakglass": 0.9725,
+            "none": 0.0024
+          },
+          "confidence": 0.9547
+        },
+        "overrideAttempt": {
+          "type": "noul",
+          "noul": 0.95
+        },
+        "urgencyWithoutAuthority": {
+          "type": "noul",
+          "noul": 0.98
+        }
+      },
+      "route": "refuse",
+      "decidedBy": "overrideAttempt"
+    }
+  }
+}

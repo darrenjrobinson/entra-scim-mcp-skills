@@ -1,0 +1,15 @@
+{
+  "sourceSystem": "workday",
+  "sourceRecordId": "WD-000108",
+  "eventType": "mover",
+  "effectiveDate": "2026-09-22",
+  "target": { "userName": "alex.wilber@contoso.local" },
+  "changes": {
+    "worker": { "jobTitle": "Senior Software Engineer" }
+  },
+  "previous": {
+    "worker": { "jobTitle": "Software Engineer" }
+  },
+  "requestedGroups": { "add": [], "remove": [] },
+  "approvals": []
+}

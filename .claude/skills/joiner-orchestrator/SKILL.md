@@ -2,9 +2,9 @@
 name: joiner-orchestrator
 description: "Safely onboard a new Entra ID user from an authoritative HR record via entra-scim-mcp: validate required attributes and mandatory Custom Security Attributes, apply naming standards, resolve the manager, run the entitlement guardrail, preview the exact tool calls, gate on approval, then provision_user, set CSAs, add baseline groups, verify and emit an audit record. Use for new hire, onboarding, create user, joiner."
 license: MIT
-compatibility: "Requires entra-scim-mcp >= 0.2.1 (stdio) connected, plus the entra-lifecycle-policy, entitlement-guardrail and identity-change-auditor skills. Runs in MCPJam Inspector playground and Claude Code."
+compatibility: "Requires entra-scim-mcp >= 0.3.0 (stdio) connected, plus the entra-lifecycle-policy, entitlement-guardrail and identity-change-auditor skills. Runs in MCPJam Inspector playground and Claude Code."
 metadata:
-  version: "0.1.0"
+  version: "0.2.0"
   author: darrenjrobinson
   product: entra-lifecycle-guardrails
   homepage: https://github.com/darrenjrobinson/entra-scim-mcp-skills

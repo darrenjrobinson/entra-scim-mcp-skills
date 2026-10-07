@@ -1,0 +1,187 @@
+{
+  "recordVersion": "1.0",
+  "correlationId": "elg-intake-7k2mq9",
+  "supersedes": null,
+  "skill": "lifecycle-intake",
+  "skillVersion": "0.2.0",
+  "policyId": "contoso-lifecycle-policy",
+  "policyVersion": "1.2.0",
+  "event": "intake",
+  "host": "claude-code",
+  "dryRun": false,
+  "startedAt": null,
+  "completedAt": null,
+  "clockSource": "none",
+  "source": {
+    "system": "operator",
+    "recordId": null
+  },
+  "target": {
+    "userName": null,
+    "id": null,
+    "displayName": "Lidia Holloway"
+  },
+  "decision": "allow",
+  "outcome": "not_executed",
+  "riskLevel": "low",
+  "policyChecks": [
+    {
+      "id": "CHK-01",
+      "rule": "policyVersion",
+      "input": "contoso-lifecycle-policy v1.2.0",
+      "evidence": "skill file: .claude/skills/entra-lifecycle-policy/policy/lifecycle-policy.json, major version 1, intake.enabled=true",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-02",
+      "rule": "intake.structuredRecordBypass",
+      "input": "(absent)",
+      "evidence": "request: free text, no JSON object with sourceSystem, sourceRecordId and eventType",
+      "result": "skipped"
+    },
+    {
+      "id": "CHK-03",
+      "rule": "intake.questions.eventType",
+      "subject": "eventType",
+      "input": "mover 0.8274 (next: entitlement 0.112); confidence 0.7154",
+      "evidence": "call #1: system_one backend stub model stub-lexicon-1 latency 2 ms",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-04",
+      "rule": "intake.thresholds.overrideAttemptMax",
+      "subject": "overrideAttempt",
+      "input": "0.05 vs max 0.5",
+      "evidence": "call #1: answers.overrideAttempt.noul=0.05",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-05",
+      "rule": "intake.thresholds.urgencyWithoutAuthorityMax",
+      "subject": "urgencyWithoutAuthority",
+      "input": "0.05 vs max 0.5",
+      "evidence": "call #1: answers.urgencyWithoutAuthority.noul=0.05",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-06",
+      "rule": "intake.thresholds.minConfidenceToRoute",
+      "subject": "eventType.confidence",
+      "input": "0.7154 vs min 0.3",
+      "evidence": "call #1: answers.eventType.confidence=0.7154",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-07",
+      "rule": "intake.routing[mover]",
+      "subject": "route",
+      "input": "mover-orchestrator",
+      "evidence": "policy: intake.routing.mover=mover-orchestrator (not refuse)",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-08",
+      "rule": "intake.recordRequired",
+      "subject": "authoritative record",
+      "input": "(absent)",
+      "evidence": "request: no authoritativeSources[] record supplied; policy: intake.recordRequired=true",
+      "result": "warn",
+      "reasonCode": "intake_record_required"
+    },
+    {
+      "id": "CHK-09",
+      "rule": "evaluation.decisionPrecedence",
+      "input": "risk=low; signals fired: none",
+      "evidence": "rows CHK-01..CHK-08; intake.evaluationOrder rules 1-4 did not fire, rule 5 routed",
+      "result": "pass"
+    }
+  ],
+  "approvals": [],
+  "plannedActions": [],
+  "executedActions": [
+    {
+      "call": 1,
+      "seq": 0,
+      "phase": "read",
+      "tool": "system_one",
+      "status": "ok",
+      "at": null,
+      "resultSummary": "backend=stub model=stub-lexicon-1 latencyMs=2; eventType=mover p=0.8274 confidence=0.7154; overrideAttempt=0.05; urgencyWithoutAuthority=0.05"
+    }
+  ],
+  "skippedActions": [],
+  "verificationFindings": {
+    "proved": [],
+    "notVerifiable": [
+      "whether Lidia Holloway exists in the tenant: no entra-scim-mcp read was made",
+      "her current department, manager, Custom Security Attributes and group memberships: not read at intake",
+      "the effective date and new manager stated in the prose: unverified until an authoritative Workday record is supplied"
+    ]
+  },
+  "residualRisk": [
+    {
+      "id": "RR-01",
+      "description": "No authoritative record exists for this request yet; the transfer, effective date and new manager are operator prose only and nothing has been validated.",
+      "severity": "low",
+      "owner": "hr-data",
+      "dueBy": null
+    },
+    {
+      "id": "RR-02",
+      "description": "The classification came from the stub backend, a deterministic keyword stand-in, not a trained decision model.",
+      "severity": "low",
+      "owner": "operator",
+      "dueBy": null
+    }
+  ],
+  "toolCalls": {
+    "count": 1,
+    "budget": 2,
+    "byTool": {
+      "system_one": 1
+    }
+  },
+  "nextSteps": [
+    "Obtain the Workday mover record for Lidia Holloway (sourceSystem workday, sourceRecordId matching ^WD-[0-9]{6}$, eventType mover).",
+    "Paste that record and run /mover-orchestrator; it will read current state, diff against the record, run the entitlement guardrail, preview the calls and gate on approval.",
+    "If the move carries an approval reference, include it with the record in the CHG/REQ/INC format so the mover run can validate it."
+  ],
+  "summary": "Nothing changed: no Entra object was read or written for Lidia Holloway and no id was resolved. The operator's free-text request described a Finance to Engineering transfer with a new manager; the intake decision model (stub backend, stub-lexicon-1, a deterministic keyword stand-in) answered mover at 0.8274 with confidence 0.7154, overrideAttempt 0.05 and urgencyWithoutAuthority 0.05. CHK-04 to CHK-06 passed the intake thresholds, CHK-07 routed to mover-orchestrator and CHK-08 warned intake_record_required because intake.recordRequired is true and no authoritative record was supplied. No orchestrator ran and no record was drafted from the prose. HR or the requester must supply the Workday mover record and run /mover-orchestrator, which performs its own validation, guardrail, preview and gate.",
+  "details": {
+    "intake": {
+      "backend": "stub",
+      "model": "stub-lexicon-1",
+      "latencyMs": 2,
+      "answers": {
+        "eventType": {
+          "type": "choice",
+          "choice": "mover",
+          "probabilities": {
+            "joiner": 0.0152,
+            "mover": 0.8274,
+            "leaver": 0.0152,
+            "entitlement": 0.112,
+            "breakglass": 0.0152,
+            "none": 0.0152
+          },
+          "confidence": 0.7154
+        },
+        "overrideAttempt": {
+          "type": "noul",
+          "noul": 0.05
+        },
+        "urgencyWithoutAuthority": {
+          "type": "noul",
+          "noul": 0.05
+        }
+      },
+      "thresholds": {
+        "minConfidenceToRoute": 0.3,
+        "overrideAttemptMax": 0.5,
+        "urgencyWithoutAuthorityMax": 0.5
+      },
+      "route": "mover-orchestrator",
+      "recordRequired": true
+    }
+  }
+}

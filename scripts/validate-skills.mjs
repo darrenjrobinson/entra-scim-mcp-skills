@@ -20,6 +20,7 @@ const SKILLS = [
   "joiner-orchestrator",
   "mover-orchestrator",
   "leaver-orchestrator",
+  "lifecycle-intake",
 ];
 const POLICY_SKILL = "entra-lifecycle-policy";
 const NON_POLICY_SKILLS = SKILLS.filter((name) => name !== POLICY_SKILL);
@@ -27,7 +28,10 @@ const NAME_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const NAME_MAX = 64;
 const DESCRIPTION_MAX = 1024;
 const BODY_WARN_LINES = 500;
-const CATALOG_BUDGET_CHARS = 8000; // MCPJam skill catalog cap for names + descriptions
+// MCPJam's fallback skill-catalog budget, used when the model's context length is unknown. The live cap is
+// 2% of the model's context window at about 4 chars per token (16,000 for a 200k-token model), so 8,000 is
+// the conservative floor to validate against.
+const CATALOG_BUDGET_CHARS = 8000;
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const skillsDir = resolve(process.env.SKILLS_DIR ?? join(repoRoot, ".claude", "skills"));
@@ -308,12 +312,35 @@ function checkPolicyReferences(policy) {
     });
   });
 
-  const budgetKeys = Object.keys(policy.costThresholds?.maxToolCallsPerRun ?? {}).sort();
+    // Intake: routing targets must be skills in this pack (or "refuse"), the eventType options
+  // must be exactly the routing keys, and the thresholds must be probabilities.
+  const intake = policy.intake;
+  if (!intake) {
+    fail("policy: intake section is missing");
+  } else {
+    const routeTargets = new Set([...NON_POLICY_SKILLS, "refuse"]);
+    for (const [option, target] of Object.entries(intake.routing ?? {})) {
+      if (!routeTargets.has(target)) fail(`policy: intake.routing.${option} = "${target}" is not a skill in this pack or "refuse"`);
+    }
+    const options = Object.keys(intake.questions?.eventType?.criteria ?? {}).sort();
+    const routes = Object.keys(intake.routing ?? {}).sort();
+    if (JSON.stringify(options) !== JSON.stringify(routes)) {
+      fail(`policy: intake.questions.eventType.criteria options [${options.join(", ")}] must equal intake.routing keys [${routes.join(", ")}]`);
+    }
+    for (const [name, value] of Object.entries(intake.thresholds ?? {})) {
+      if (typeof value !== "number" || value < 0 || value > 1) fail(`policy: intake.thresholds.${name} must be a probability in [0, 1]`);
+    }
+    for (const [name, q] of Object.entries(intake.questions ?? {})) {
+      if (q?.type === "choice" && Object.keys(q.criteria ?? {}).length < 2) fail(`policy: intake.questions.${name} (choice) needs at least two criteria options`);
+    }
+  }
+
+const budgetKeys = Object.keys(policy.costThresholds?.maxToolCallsPerRun ?? {}).sort();
   const expected = [...NON_POLICY_SKILLS].sort();
   if (JSON.stringify(budgetKeys) !== JSON.stringify(expected)) {
     fail(`policy: costThresholds.maxToolCallsPerRun keys [${budgetKeys.join(", ")}] must be exactly [${expected.join(", ")}]`);
   }
-  out(`OK    policy cross-references: ${refs.length} group ref(s) against ${catalog.size} catalog groups, ${setRefs} CSA set ref(s), ${budgetKeys.length} budget key(s)`);
+  out(`OK    policy cross-references: ${refs.length} group ref(s) against ${catalog.size} catalog groups, ${setRefs} CSA set ref(s), ${budgetKeys.length} budget key(s), ${Object.keys(policy.intake?.routing ?? {}).length} intake route(s)`);
   return catalog;
 }
 
@@ -369,9 +396,9 @@ for (const dirName of SKILLS) {
 
 const descriptionChars = [...validated.values()].reduce((sum, s) => sum + s.description.length, 0);
 const catalogChars = [...validated.values()].reduce((sum, s) => sum + s.name.length + s.description.length, 0);
-out(`      descriptions total ${descriptionChars} chars; names + descriptions ${catalogChars} chars (MCPJam catalog budget ~${CATALOG_BUDGET_CHARS}) across ${validated.size} of ${SKILLS.length} skills`);
+out(`      descriptions total ${descriptionChars} chars; names + descriptions ${catalogChars} chars (MCPJam fallback catalog budget ${CATALOG_BUDGET_CHARS}; the live cap is 2% of the model's context window) across ${validated.size} of ${SKILLS.length} skills`);
 if (catalogChars > CATALOG_BUDGET_CHARS) {
-  warn(`names + descriptions total ${catalogChars} chars exceeds the ~${CATALOG_BUDGET_CHARS} char MCPJam catalog budget`);
+  warn(`names + descriptions total ${catalogChars} chars exceeds MCPJam's ${CATALOG_BUDGET_CHARS}-char fallback catalog budget (the live cap is 2% of the model's context window)`);
 }
 
 const policyFile = join(skillsDir, POLICY_SKILL, "policy", "lifecycle-policy.json");

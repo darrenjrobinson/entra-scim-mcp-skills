@@ -22,6 +22,8 @@ Register an application and grant these Microsoft Graph **application** permissi
 | `User-LifeCycleInfo.ReadWrite.All` | `update_user_lifecycle` (`employeeLeaveDateTime`) |
 | `User.EnableDisableAccount.All` | the `active` flag written by the joiner's activate step and the leaver's disable step |
 
+`entra-scim-mcp` 0.3.0 documents narrower alternatives for deployments that split duties: `User.Create` (create only), `User.ReadUpdate.All` (read and update, no create or delete), `Group.Create` and `GroupMember.ReadWrite.All` (add and remove members only). The joiner creates, reads and updates, so the table above is the smallest set that runs every scenario; the server README has the per-tool mapping.
+
 Create either a client secret or a client certificate (PEM) for the app.
 
 ## 3. Credentials in `.env`
@@ -51,7 +53,7 @@ The policy reads and writes two attribute sets. They must exist with exactly the
 |---|---|---|---|---|
 | `Employment` | `ContractType` | String | `Employee`, `Contractor`, `Vendor` | profile selection (`approvedBaselineProfiles.keyedBy`), the `SG-Contractors` and `SG-Engineering-ProdDeploy` gates, `authoritativeSources[].allowedContractTypes` |
 | `Employment` | `CostCenter` | String | free text matching `^(FIN\|ENG\|OPS\|HR)-[0-9]{3}$` | the `SG-Finance-Treasury-Payments` gate (`startsWith "FIN-"`) |
-| `Compliance` | `DataClassification` | String | `Public`, `Internal`, `Confidential`, `Restricted` | mandatory joiner attribute REQ-CSA-03 |
+| `Compliance` | `DataClassification` | String | `Public`, `Internal`, `Confidential`, `Restricted` | mandatory joiner attribute REQ-CSA-03; `Restricted` lifts a leaver to high risk (RS-13) |
 | `Compliance` | `LegalHold` | Boolean | `true` / `false`, default `false` | `offboardingOrder.deleteBlockedWhen` |
 
 Create them in the Entra portal under **Protection** > **Custom security attributes**. Two things catch people out:
@@ -110,7 +112,8 @@ The demo source records and the seed name users at `contoso.local` (managers `pa
 | S2 | the manager named in `worker.managerUserName` | Active. `priya.natarajan@<domain>` and `externalId` `WD-000123` must not exist. |
 | S3a | the target | Holds `SG-Finance-AP-Requestors`, does not hold `SG-Finance-AP-Approvers`. |
 | S3b | the target and the new manager | Target in department `Finance` with `Employment.CostCenter` `FIN-110`, holding `All Employees`, `SG-Finance-Users`, `SG-Finance-AP-Requestors`, `SG-Finance-Treasury-Payments`. |
-| S4 | the target | Active, `Compliance.LegalHold` `true`, holding `All Employees`, `SG-Engineering-Users`, `SG-Engineering-ProdDeploy`, `SG-Legal-Hold`. |
+| S3c | the target | Holds `All Employees` and `SG-Engineering-Users`; `title` is `Software Engineer` (the record's `previous.worker.jobTitle`). |
+| S4 | the target | Active, `Compliance.DataClassification` `Restricted`, `Compliance.LegalHold` `true`, holding `All Employees`, `SG-Engineering-Users`, `SG-Engineering-ProdDeploy`, `SG-Legal-Hold`. |
 
 ## 7. Tenant behaviours that differ from the mock
 
@@ -130,8 +133,9 @@ Every SCIM Provisioning API call is billed, reads included, and the server does 
 | S2 joiner corrected | 15 | 7 |
 | S3a mover denied | 5 | 0 |
 | S3b mover transfer | 15 | 6 |
+| S3c mover title change | 6 | 1 |
 | S4 leaver (immediate) | about 11 | 5 |
-| Full pass | about 47 | 18 |
+| Full pass | about 53 | 19 |
 
 A model that takes a wrong turn and stops early costs fewer calls, not more: every orchestrator stops on the first error and the budget caps the worst case at 20 (joiner, mover) or 25 (leaver) per run.
 
@@ -139,7 +143,7 @@ A model that takes a wrong turn and stops early costs fewer calls, not more: eve
 
 Before enabling the live entry, run each scenario once through `entra-scim-rehearsal`. It starts the server with `ENTRA_SCIM_DRY_RUN=1` and no credentials, and every tool, reads included, returns `{ "dryRun": true, "request": { ... } }` showing the exact request that would go to `https://graph.microsoft.com/rp/scim`. The skills classify such a run as `rehearsal` and skip verification. It cannot resolve ids or complete a scenario; what it proves is that the request shapes, paths and URNs are what you expect before a single billed call.
 
-In Claude Code, `/mcp` and enable `entra-scim-rehearsal` only. In MCPJam, add a second STDIO server with command `npx`, args `-y entra-scim-mcp@0.2.1` and one variable, `ENTRA_SCIM_DRY_RUN` = `1`, and enable only that one for the rehearsal chat.
+In Claude Code, start the rehearsal profile on its own from the repo root: `claude --mcp-config demo/mcp/rehearsal.mcp.json --strict-mcp-config`. In MCPJam, add a second STDIO server with command `npx`, args `-y entra-scim-mcp@0.3.0` and one variable, `ENTRA_SCIM_DRY_RUN` = `1`, and enable only that one for the rehearsal chat.
 
 `npm run verify:sequences` is not a live tool. It refuses non-loopback URLs because it writes to whatever it is pointed at.
 
@@ -149,7 +153,13 @@ In Claude Code, `/mcp` and enable `entra-scim-rehearsal` only. In MCPJam, add a 
 npm install
 ```
 
-In Claude Code, `/mcp`, disable `entra-scim-mock` and `entra-scim-rehearsal`, enable `entra-scim-live`. The launcher prints to stderr which variables it loaded, the tenant id, the base URL and whether it is using a secret or a certificate, then starts the published server. Invoke the skills exactly as against the mock. Confirm `Tool calls` in each summary against the table above.
+In Claude Code, from the repo root, start the live profile and nothing else:
+
+```bash
+claude --mcp-config demo/mcp/live.mcp.json --strict-mcp-config
+```
+
+`demo/mcp/live.mcp.json` runs `node scripts/mcp-live.mjs` by relative path, so the working directory must be the repo root. If `.env` is missing the launcher exits naming the missing variables and Claude Code reports the server as failed to connect. Otherwise the launcher prints to stderr which variables it loaded, the tenant id, the base URL and whether it is using a secret or a certificate, then starts the published server. Invoke the skills exactly as against the mock. Confirm `Tool calls` in each summary against the table above.
 
 ## 11. Clean up
 

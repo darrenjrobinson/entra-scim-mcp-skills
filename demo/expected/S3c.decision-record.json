@@ -1,0 +1,325 @@
+{
+  "recordVersion": "1.0",
+  "correlationId": "elg-WD-000108-k7m2qa",
+  "supersedes": null,
+  "skill": "mover-orchestrator",
+  "skillVersion": "0.2.0",
+  "policyId": "contoso-lifecycle-policy",
+  "policyVersion": "1.2.0",
+  "event": "mover",
+  "host": "claude-code",
+  "dryRun": false,
+  "startedAt": "2026-10-06T06:55:46.437Z",
+  "completedAt": "2026-10-06T07:07:09.422Z",
+  "clockSource": "resourceMeta",
+  "source": {
+    "system": "workday",
+    "recordId": "WD-000108"
+  },
+  "target": {
+    "userName": "alex.wilber@contoso.local",
+    "id": "f3aed90a-27f9-4db8-b330-ad898eff1e88",
+    "displayName": "Alex Wilber"
+  },
+  "decision": "allow",
+  "outcome": "completed",
+  "riskLevel": "low",
+  "policyChecks": [
+    {
+      "id": "CHK-01",
+      "rule": "policyVersion",
+      "input": "contoso-lifecycle-policy 1.2.0",
+      "evidence": "entra-lifecycle-policy skill, policy/lifecycle-policy.json; major version 1",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-02",
+      "rule": "authoritativeSources[id=workday]",
+      "input": "sourceSystem=workday; sourceRecordId=WD-000108; eventType=mover",
+      "evidence": "source record: id matches ^WD-[0-9]{6}$; mover in events",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-03",
+      "rule": "target.userName",
+      "input": "alex.wilber@contoso.local",
+      "evidence": "source record: target.userName present",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-04",
+      "rule": "requiredJoinerAttributes.core",
+      "subject": "changes.worker",
+      "input": "jobTitle",
+      "evidence": "source record: only jobTitle present; free text, no pattern",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-05",
+      "rule": "approvalThresholds.escalations.ambiguousIdentity",
+      "subject": "alex.wilber@contoso.local",
+      "input": "1 match",
+      "evidence": "call #1: list_users userName eq alex.wilber@contoso.local -> 1 result, active=true, id f3aed90a-27f9-4db8-b330-ad898eff1e88",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-06",
+      "rule": "moverRules.compareToPreviousWhenPresent",
+      "subject": "title",
+      "input": "previous=Software Engineer; tenant=Software Engineer",
+      "evidence": "call #2: get_user title=Software Engineer equals previous.worker.jobTitle",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-07",
+      "rule": "moverRules.sequence[attributes]",
+      "subject": "title",
+      "input": "Software Engineer -> Senior Software Engineer",
+      "evidence": "call #2 vs source record changes.worker.jobTitle; one changed attribute",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-08",
+      "rule": "moverRules.sequence[customSecurityAttributes]",
+      "subject": "csa",
+      "input": "(none requested)",
+      "evidence": "call #3: get_user_custom_security_attributes Employment{ContractType=Employee, CostCenter=ENG-200} Compliance{DataClassification=Internal, LegalHold=false}; no change planned",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-09",
+      "rule": "moverRules.reevaluateHeldGroupCsaGates",
+      "subject": "All Employees, SG-Engineering-Users",
+      "input": "requiresCsa=[] for both",
+      "evidence": "call #4: 2 held groups; policy groupCatalog: no CSA conditions on either",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-10",
+      "rule": "moverRules.removeOldDepartmentGroups",
+      "subject": "department",
+      "input": "Engineering (unchanged)",
+      "evidence": "call #2: department=Engineering; record does not change department",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-11",
+      "rule": "moverRules.leaveUncataloguedGroupsUntouched",
+      "input": "2 held, 2 in catalog",
+      "evidence": "call #4: All Employees b4417a3d-c878-462a-a37c-671ceaa53cd1, SG-Engineering-Users b41a2f54-4c19-4544-bc9a-fd33b041d8cc; both in groupCatalog",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-12",
+      "rule": "sodRules",
+      "input": "resulting set = {All Employees, SG-Engineering-Users}",
+      "evidence": "call #4; policy: no sodRules conflictingGroups pair present",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-13",
+      "rule": "privilegedGroups",
+      "input": "(none requested or held)",
+      "evidence": "call #4; policy privilegedGroups.displayNames not in held set",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-14",
+      "rule": "approvalThresholds.decisionByRiskLevel",
+      "input": "low -> allow; operatorConfirmRequired.low=false",
+      "evidence": "policy; approvals[] empty and none required",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-15",
+      "rule": "costThresholds.maxToolCallsPerRun.mover-orchestrator",
+      "input": "6 of 20",
+      "evidence": "calls #1-#6; 30% of budget, below warnAtPercent 80",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-16",
+      "rule": "evaluation.decisionPrecedence",
+      "input": "allow; riskModel.aggregate=max(RS-08)=low",
+      "evidence": "rows above; only RS-08 mover.attributeOnlyNonSensitive fired",
+      "result": "pass"
+    }
+  ],
+  "approvals": [],
+  "plannedActions": [
+    {
+      "seq": 1,
+      "tool": "update_user",
+      "target": "alex.wilber@contoso.local",
+      "argsSummary": "id=f3aed90a-27f9-4db8-b330-ad898eff1e88; operations=[replace title=Senior Software Engineer]",
+      "purpose": "attributes",
+      "policyBasis": [
+        "moverRules.sequence[attributes]"
+      ],
+      "status": "executed"
+    },
+    {
+      "seq": 2,
+      "tool": "get_user",
+      "target": "alex.wilber@contoso.local",
+      "argsSummary": "id=f3aed90a-27f9-4db8-b330-ad898eff1e88",
+      "purpose": "verify title and active unchanged",
+      "policyBasis": [
+        "auditRequirements.verificationRequiredBeforeCompleted"
+      ],
+      "status": "executed"
+    }
+  ],
+  "executedActions": [
+    {
+      "call": 1,
+      "seq": 0,
+      "phase": "resolve",
+      "tool": "list_users",
+      "status": "ok",
+      "at": "2026-10-06T06:55:46.668Z",
+      "resultSummary": "filter userName eq alex.wilber@contoso.local; totalResults=1; id f3aed90a-27f9-4db8-b330-ad898eff1e88; active=true"
+    },
+    {
+      "call": 2,
+      "seq": 0,
+      "phase": "read",
+      "tool": "get_user",
+      "status": "ok",
+      "at": "2026-10-06T06:55:46.668Z",
+      "resultSummary": "title=Software Engineer; department=Engineering; employeeNumber=100006; manager=358a2825-710a-439c-9d87-709d22fdc92f; active=true"
+    },
+    {
+      "call": 3,
+      "seq": 0,
+      "phase": "read",
+      "tool": "get_user_custom_security_attributes",
+      "status": "ok",
+      "at": "2026-10-06T06:55:46.668Z",
+      "resultSummary": "attributeSets=[Employment, Compliance]; Employment{ContractType=Employee, CostCenter=ENG-200}; Compliance{DataClassification=Internal, LegalHold=false}"
+    },
+    {
+      "call": 4,
+      "seq": 0,
+      "phase": "read",
+      "tool": "list_groups",
+      "status": "ok",
+      "at": "2026-10-06T07:02:42.115Z",
+      "resultSummary": "filter members.value eq f3aed90a-27f9-4db8-b330-ad898eff1e88; totalResults=2; All Employees b4417a3d-c878-462a-a37c-671ceaa53cd1; SG-Engineering-Users b41a2f54-4c19-4544-bc9a-fd33b041d8cc"
+    },
+    {
+      "call": 5,
+      "seq": 1,
+      "phase": "execute",
+      "tool": "update_user",
+      "status": "ok",
+      "at": null,
+      "resultSummary": "ok=true; id f3aed90a-27f9-4db8-b330-ad898eff1e88; 1 replace op on title"
+    },
+    {
+      "call": 6,
+      "seq": 2,
+      "phase": "verify",
+      "tool": "get_user",
+      "status": "ok",
+      "at": "2026-10-06T07:07:09.422Z",
+      "resultSummary": "title=Senior Software Engineer; active=true; department, manager, employeeNumber unchanged"
+    }
+  ],
+  "skippedActions": [],
+  "verificationFindings": {
+    "proved": [
+      {
+        "check": "title equals planned after-value",
+        "tool": "get_user",
+        "expected": "Senior Software Engineer",
+        "observed": "Senior Software Engineer",
+        "result": "pass"
+      },
+      {
+        "check": "active unchanged",
+        "tool": "get_user",
+        "expected": "true",
+        "observed": "true",
+        "result": "pass"
+      },
+      {
+        "check": "untouched attributes unchanged",
+        "tool": "get_user",
+        "expected": "department=Engineering; manager=358a2825-710a-439c-9d87-709d22fdc92f; employeeNumber=100006",
+        "observed": "department=Engineering; manager=358a2825-710a-439c-9d87-709d22fdc92f; employeeNumber=100006",
+        "result": "pass"
+      }
+    ],
+    "notVerifiable": [
+      "sign-in sessions and tokens",
+      "licence assignment",
+      "application role assignments",
+      "nested or transitive group access"
+    ]
+  },
+  "residualRisk": [],
+  "toolCalls": {
+    "count": 6,
+    "budget": 20,
+    "byTool": {
+      "list_users": 1,
+      "get_user": 2,
+      "get_user_custom_security_attributes": 1,
+      "list_groups": 1,
+      "update_user": 1
+    }
+  },
+  "nextSteps": [
+    "No action required. Workday record WD-000108 is reflected in the tenant for alex.wilber@contoso.local."
+  ],
+  "summary": "Alex Wilber's job title changed from Software Engineer to Senior Software Engineer on user f3aed90a-27f9-4db8-b330-ad898eff1e88, and nothing else about the account changed. The change came from Workday mover record WD-000108, effective 2026-09-22, whose previous title matched the tenant exactly. Policy rows CHK-01 to CHK-16 all passed: only risk signal RS-08 fired, so the run was low risk, decision allow, with no approval or operator confirmation required. Department, manager, employee number, all four Custom Security Attributes and both group memberships (All Employees, SG-Engineering-Users) were read and left untouched because the record did not change them and no CSA gate or SoD rule was affected. Nothing remains for a human; the verification read confirmed the new title with the account still active.",
+  "details": {
+    "before": {
+      "attributes": {
+        "title": "Software Engineer",
+        "department": "Engineering",
+        "employeeNumber": "100006",
+        "manager": "358a2825-710a-439c-9d87-709d22fdc92f",
+        "active": true
+      },
+      "customSecurityAttributes": {
+        "Employment": {
+          "ContractType": "Employee",
+          "CostCenter": "ENG-200"
+        },
+        "Compliance": {
+          "DataClassification": "Internal",
+          "LegalHold": false
+        }
+      },
+      "memberships": [
+        "All Employees",
+        "SG-Engineering-Users"
+      ]
+    },
+    "after": {
+      "attributes": {
+        "title": "Senior Software Engineer",
+        "department": "Engineering",
+        "employeeNumber": "100006",
+        "manager": "358a2825-710a-439c-9d87-709d22fdc92f",
+        "active": true
+      },
+      "customSecurityAttributes": {
+        "Employment": {
+          "ContractType": "Employee",
+          "CostCenter": "ENG-200"
+        },
+        "Compliance": {
+          "DataClassification": "Internal",
+          "LegalHold": false
+        }
+      },
+      "memberships": [
+        "All Employees",
+        "SG-Engineering-Users"
+      ]
+    }
+  }
+}

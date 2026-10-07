@@ -9,7 +9,7 @@
     "policyId", "policyVersion", "tenant", "evaluation", "customSecurityAttributes",
     "authoritativeSources", "requiredJoinerAttributes", "approvedBaselineProfiles", "groupCatalog",
     "privilegedGroups", "sodRules", "sodEvaluation", "riskModel", "approvalThresholds", "joinerRules",
-    "moverRules", "offboardingOrder", "retainedAccessRules", "namingStandards", "costThresholds",
+    "moverRules", "offboardingOrder", "retainedAccessRules", "namingStandards", "costThresholds", "intake",
     "auditRequirements"
   ],
   "properties": {
@@ -361,8 +361,8 @@
       "properties": {
         "maxToolCallsPerRun": {
           "type": "object",
-          "required": ["entitlement-guardrail", "joiner-orchestrator", "mover-orchestrator", "leaver-orchestrator", "identity-change-auditor"],
-          "propertyNames": { "enum": ["entitlement-guardrail", "joiner-orchestrator", "mover-orchestrator", "leaver-orchestrator", "identity-change-auditor"] },
+          "required": ["entitlement-guardrail", "joiner-orchestrator", "mover-orchestrator", "leaver-orchestrator", "identity-change-auditor", "lifecycle-intake"],
+          "propertyNames": { "enum": ["entitlement-guardrail", "joiner-orchestrator", "mover-orchestrator", "leaver-orchestrator", "identity-change-auditor", "lifecycle-intake"] },
           "additionalProperties": { "type": "integer", "minimum": 0 }
         },
         "warnAtPercent": { "type": "integer", "minimum": 1, "maximum": 100 },
@@ -391,7 +391,51 @@
         "notes": { "$ref": "#/$defs/Notes" }
       }
     },
-    "auditRequirements": {
+        "intake": {
+      "type": "object",
+      "description": "Front door: a System One decision model answers typed questions about an inbound request; these fields say which questions, how to route the answer and where the thresholds sit. Structured records bypass the model.",
+      "additionalProperties": false,
+      "required": ["enabled", "structuredRecordBypass", "server", "tool", "backends", "questions", "routing", "thresholds", "onLowConfidence", "onOverrideAttempt", "onUrgencyWithoutAuthority", "onRefuse", "recordRequired", "evaluationOrder"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "structuredRecordBypass": { "type": "boolean", "const": true },
+        "server": { "type": "string", "const": "entra-lifecycle-intake" },
+        "tool": { "type": "string", "const": "system_one" },
+        "backends": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "enum": ["stub", "jev", "laya"] } },
+        "questions": {
+          "type": "object",
+          "required": ["eventType", "overrideAttempt", "urgencyWithoutAuthority"],
+          "additionalProperties": { "$ref": "#/$defs/IntakeQuestion" },
+          "properties": {
+            "eventType": { "$ref": "#/$defs/IntakeQuestion" },
+            "overrideAttempt": { "$ref": "#/$defs/IntakeQuestion" },
+            "urgencyWithoutAuthority": { "$ref": "#/$defs/IntakeQuestion" }
+          }
+        },
+        "routing": {
+          "type": "object",
+          "minProperties": 2,
+          "additionalProperties": { "type": "string", "enum": ["joiner-orchestrator", "mover-orchestrator", "leaver-orchestrator", "entitlement-guardrail", "refuse"] }
+        },
+        "thresholds": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["minConfidenceToRoute", "overrideAttemptMax", "urgencyWithoutAuthorityMax"],
+          "properties": {
+            "minConfidenceToRoute": { "$ref": "#/$defs/Probability" },
+            "overrideAttemptMax": { "$ref": "#/$defs/Probability" },
+            "urgencyWithoutAuthorityMax": { "$ref": "#/$defs/Probability" }
+          }
+        },
+        "onLowConfidence": { "$ref": "#/$defs/Decision" },
+        "onOverrideAttempt": { "$ref": "#/$defs/Decision" },
+        "onUrgencyWithoutAuthority": { "$ref": "#/$defs/Decision" },
+        "onRefuse": { "$ref": "#/$defs/Decision" },
+        "recordRequired": { "type": "boolean", "const": true },
+        "evaluationOrder": { "type": "array", "const": ["overrideAttempt", "urgencyWithoutAuthority", "lowConfidence", "refuse", "route"] }
+      }
+    },
+"auditRequirements": {
       "type": "object",
       "additionalProperties": false,
       "required": ["decisionRecordSchema", "recordVersion", "correlationId", "timestamps", "requiredSections", "policyCheckTableInTranscript", "redactFields", "verificationRequiredBeforeCompleted", "outputs", "summaryMaxWords"],
@@ -432,6 +476,23 @@
     "Operator": { "type": "string", "enum": ["equals", "notEquals", "in", "notIn", "startsWith", "endsWith", "matches", "exists", "notExists"] },
     "Decision": { "type": "string", "enum": ["allow", "allow_with_approval", "deny", "require_manual_review"] },
     "RiskLevel": { "type": "string", "enum": ["low", "medium", "high"] },
+    "Probability": { "type": "number", "minimum": 0, "maximum": 1 },
+    "IntakeQuestion": {
+      "type": "object",
+      "description": "A System One question: the same shape TypeSafe Jev and Laya accept.",
+      "additionalProperties": false,
+      "required": ["type", "instructions"],
+      "properties": {
+        "type": { "type": "string", "enum": ["choice", "score", "noul"] },
+        "instructions": { "type": "string", "minLength": 1 },
+        "criteria": {
+          "oneOf": [
+            { "type": "object", "minProperties": 2, "additionalProperties": { "type": "string" } },
+            { "type": "array", "minItems": 2, "items": { "type": "string" } }
+          ]
+        }
+      }
+    },
     "RiskLevelOrCatalog": { "type": "string", "enum": ["low", "medium", "high", "fromCatalog"] },
     "LeaverMode": { "type": "string", "enum": ["scheduled", "immediate", "delete"] },
     "StepName": { "type": "string", "enum": ["disable", "setLeaveDate", "removeMemberships", "verifyResidualAccess", "deprovision", "verifyDeprovisioned"] },

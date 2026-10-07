@@ -2,9 +2,9 @@
 name: mover-orchestrator
 description: "Govern department, manager, cost-centre or role changes for an existing Entra ID user via entra-scim-mcp: read current attributes, Custom Security Attributes and group memberships, diff against the authoritative record, check SoD and CSA gates, preview ordered update_user and group remove/add calls, gate on approval, execute, verify and emit a before/after audit record. Use for transfer, promotion, role change, department move, mover."
 license: MIT
-compatibility: "Requires entra-scim-mcp >= 0.2.1 (stdio) connected, plus the entra-lifecycle-policy, entitlement-guardrail and identity-change-auditor skills. Runs in MCPJam Inspector playground and Claude Code."
+compatibility: "Requires entra-scim-mcp >= 0.3.0 (stdio) connected, plus the entra-lifecycle-policy, entitlement-guardrail and identity-change-auditor skills. Runs in MCPJam Inspector playground and Claude Code."
 metadata:
-  version: "0.1.0"
+  version: "0.2.0"
   author: darrenjrobinson
   product: entra-lifecycle-guardrails
   homepage: https://github.com/darrenjrobinson/entra-scim-mcp-skills
@@ -48,7 +48,7 @@ The tenant policy lives in the `entra-lifecycle-policy` skill.
 3. `get_user {id: "<userId>"}` → current `department`, `employeeNumber`, `manager.value`, `title`, `active`. Ignore any CSA object in this result.
 4. `get_user_custom_security_attributes {id, attributeSets: <customSecurityAttributes.attributeSets>}` → `csa.current`.
 5. `list_groups {filter: [{attr: "members.value", op: "eq", value: "<userId>"}], attributes: ["id","displayName"]}` → `currentMemberships` with their ids.
-6. `list_groups {attributes: ["id","displayName"]}` (follow `nextCursor`) → ids for every catalog group the plan may add. Skip if every group to add is already known from step 5 (it never is for adds).
+6. `list_groups {attributes: ["id","displayName"]}` (follow `nextCursor`) → ids for every catalog group the plan may add. Skip it when the plan has no additions (an attribute-only change such as S3c); removals use the ids from step 5.
 
 ## Step 3 — Diff and classify (no tool calls)
 
@@ -76,13 +76,13 @@ Before → after: department Finance → Engineering; manager <id> → <id>; Emp
 | 2 | update_user_custom_security_attributes | id=<userId>, replace Employment.CostCenter=ENG-210 | CSA | moverRules.sequence[customSecurityAttributes] |
 | 3.. | remove_group_member | id=<groupId>, memberId=<userId> | <reason> | moverRules.removeOldDepartmentGroups / reevaluateHeldGroupCsaGates / requestedGroups.remove |
 | .. | add_group_members | id=<groupId>, memberIds=[<userId>] | <reason> | approvedBaselineProfiles / requestedGroups.add |
-| n-2..n | get_user / get_user_custom_security_attributes / list_groups | verify | auditRequirements.verificationRequiredBeforeCompleted |
+| n-k..n | get_user (+ get_user_custom_security_attributes when a CSA changed, + list_groups when a membership changed) | verify | auditRequirements.verificationRequiredBeforeCompleted |
 | — | (skipped) <group> | | <reasonCode> <ruleId> | <policy path> |
 Approvals: <ref> scope <scope> → valid | missing for: <scopes>
 Gate: <"low risk, proceeding" | "operator confirmation required: reply exactly `approve <correlationId>`" | "blocked: <reasonCode>">
 ```
 
-The preview makes **zero** tool calls. If `approvalThresholds.operatorConfirmRequired[riskLevel]` is true, end the turn; continue only when a later operator message contains `approve <correlationId>` exactly. A missing or invalid approval → `awaiting_approval`, end the turn, name the scope.
+The preview makes **zero** tool calls. If `approvalThresholds.operatorConfirmRequired[riskLevel]` is true, end the turn; continue only when a later operator message contains `approve <correlationId>` exactly. A missing or invalid approval → `awaiting_approval`, end the turn, name the scope. When the run risk is `low` (`decisionByRiskLevel.low = allow`, `operatorConfirmRequired.low = false`), print `Gate: low risk, proceeding` and continue straight to Step 6 in the same turn; no approval reference is needed and none should be asked for.
 
 If there is nothing to write (S3a: the only requested add is denied), skip to Step 8 with the reads already made.
 
@@ -95,15 +95,17 @@ If there is nothing to write (S3a: the only requested add is denied), skip to St
 
 Full argument JSON and error table: `references/tool-sequences.md`.
 
-## Step 7 — Verify (three reads)
+## Step 7 — Verify (one read per changed dimension, at most three)
 
-1. `get_user {id}`: every changed attribute equals the planned after-value; `active` unchanged.
-2. `get_user_custom_security_attributes {id, attributeSets}`: changed CSAs equal the planned values.
-3. `list_groups members.value eq <userId>`: equals (current − removals) + additions exactly. Mismatch → `verification_failed`.
+1. `get_user {id}`: every changed attribute equals the planned after-value; `active` unchanged. Always.
+2. `get_user_custom_security_attributes {id, attributeSets}`: changed CSAs equal the planned values. Only when a CSA was written.
+3. `list_groups members.value eq <userId>`: equals (current − removals) + additions exactly. Only when a membership changed. Mismatch → `verification_failed`.
+
+An attribute-only change (S3c) verifies with the single `get_user`; a transfer (S3b) needs all three.
 
 ## Step 8 — Audit
 
-Activate `identity-change-auditor` and hand it everything, plus `details.before` / `details.after` objects (attributes, CSAs, memberships). Expected demo counts: S3a 5 reads, 0 writes, `blocked`; S3b 15 of 20 (6 reads, 2 attribute writes, 3 removals, 1 add, 3 verify), `completed`.
+Activate `identity-change-auditor` and hand it everything, plus `details.before` / `details.after` objects (attributes, CSAs, memberships). Expected demo counts: S3a 5 reads, 0 writes, `blocked`; S3b 15 of 20 (6 reads, 2 attribute writes, 3 removals, 1 add, 3 verify), `completed`; S3c 6 of 20 (4 reads, 1 write, 1 verify), `completed`, risk low, no gate.
 
 ## Hard rules
 

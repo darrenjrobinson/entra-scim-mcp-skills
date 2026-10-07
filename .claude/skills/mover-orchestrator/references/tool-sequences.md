@@ -1,6 +1,6 @@
 # mover-orchestrator: tool sequences
 
-Exact argument shapes for every call, in order, plus the errors each can return. Tool names and schemas are those of `entra-scim-mcp` 0.2.1. Ids are placeholders; resolve them every run.
+Exact argument shapes for every call, in order, plus the errors each can return. Tool names and schemas are those of `entra-scim-mcp` 0.3.0. Ids are placeholders; resolve them every run.
 
 ## Resolve and read
 
@@ -24,7 +24,7 @@ Exact argument shapes for every call, in order, plus the errors each can return.
 // call 5: current memberships (ids included, so no per-group lookup is needed for removals)
 { "tool": "list_groups", "arguments": { "filter": [ { "attr": "members.value", "op": "eq", "value": "<userId>" } ], "attributes": ["id", "displayName"] } }
 
-// call 6: catalog ids for additions
+// call 6: catalog ids for additions (skip when nothing is added)
 { "tool": "list_groups", "arguments": { "attributes": ["id", "displayName"] } }
 ```
 
@@ -64,15 +64,15 @@ Exact argument shapes for every call, in order, plus the errors each can return.
 ## Verify
 
 ```json
-// call 13
+// call 13 (always)
 { "tool": "get_user", "arguments": { "id": "<userId>" } }
 // check: enterprise department === "Engineering", manager.value === newManagerId, title, active unchanged
 
-// call 14
+// call 14 (only when a CSA was written)
 { "tool": "get_user_custom_security_attributes", "arguments": { "id": "<userId>", "attributeSets": ["Employment", "Compliance"] } }
 // check: Employment.CostCenter === "ENG-210"
 
-// call 15
+// call 15 (only when a membership changed)
 { "tool": "list_groups", "arguments": { "filter": [ { "attr": "members.value", "op": "eq", "value": "<userId>" } ], "attributes": ["id", "displayName"] } }
 // check: equals (current − removals) + additions, e.g. [All Employees, SG-Engineering-Users]
 ```
@@ -103,3 +103,8 @@ Diff: department Finance → Engineering (RS-05), manager (RS-06), CostCenter FI
 Removals: SG-Finance-AP-Requestors (requested) + SG-Finance-Users (old department group, `removeOldDepartmentGroups`) + SG-Finance-Treasury-Payments (held; `requiresCsa` CostCenter startsWith FIN- fails against ENG-210; `reevaluateHeldGroupCsaGates`, row `warn` / `csa_condition_failed`).
 Additions: SG-Engineering-Users (new department group).
 Guardrail on resulting set {All Employees, SG-Engineering-Users}: no SoD, no privileged. Calls 1–15 as above; verify memberships == [All Employees, SG-Engineering-Users]; outcome `completed`; 15 calls.
+
+### S3c — title only, low risk, no gate
+
+Record: target `alex.wilber@contoso.local`; changes jobTitle Senior Software Engineer; `previous.worker.jobTitle` Software Engineer; no CSA, group or manager change; no approvals.
+Calls 1, 3, 4, 5 (no manager change → no call 2; no additions → no call 6). Diff: title only → RS-08 low → decision `allow`; `operatorConfirmRequired.low = false` → `Gate: low risk, proceeding`, execution in the same turn. Call 7: `update_user` with one `replace` on `title`. Verify: call 13 only (`get_user`: title updated, `active` unchanged). Outcome `completed`, 6 calls (5 reads, 1 write), `approvals: []`.

@@ -6,7 +6,7 @@
 //
 //   node demo/scripts/seed-links.mjs <seed.json> [--base-url http://127.0.0.1:8990] [--token dev-token]
 //
-// Zero dependencies (Node 20+ fetch). Loopback only. Idempotent: the mock's
+// Zero dependencies (Node 22+ fetch). Loopback only. Idempotent: the mock's
 // member add is a no-op for existing members and the manager PATCH is a
 // replace, so re-running after a partial failure is safe. Retries the first
 // request for ~10 s so it can be started before the mock is listening.
@@ -15,7 +15,7 @@ import { readFile } from "node:fs/promises";
 const DEFAULT_BASE_URL = "http://127.0.0.1:8990";
 const DEFAULT_TOKEN = "dev-token";
 const MEMBER_ADD_CHUNK = 20; // Entra SCIM API cap, enforced by the mock
-const PAGE_SIZE = 1000; // the mock's MAX_PAGE_SIZE; larger values are clamped
+const PAGE_SIZE = 999; // entra-scim-mcp 0.3.0 rejects count > 999 on /Users (0.2.x clamped it); 0.3.0 also caps any user read that projects manager at 100
 const READY_TIMEOUT_MS = 10_000;
 const READY_INTERVAL_MS = 500;
 

@@ -5,7 +5,7 @@
   "skill": "joiner-orchestrator",
   "skillVersion": "0.1.0",
   "policyId": "contoso-lifecycle-policy",
-  "policyVersion": "1.0.0",
+  "policyVersion": "1.1.0",
   "event": "joiner",
   "host": "mcpjam",
   "dryRun": false,
@@ -18,7 +18,7 @@
   "outcome": "blocked",
   "riskLevel": "high",
   "policyChecks": [
-    { "id": "CHK-01", "rule": "policyVersion", "input": "1.0.0", "evidence": "entra-lifecycle-policy skill, policy/lifecycle-policy.json", "result": "pass" },
+    { "id": "CHK-01", "rule": "policyVersion", "input": "1.1.0", "evidence": "entra-lifecycle-policy skill, policy/lifecycle-policy.json", "result": "pass" },
     { "id": "CHK-02", "rule": "authoritativeSources[id=workday]", "input": "sourceSystem=workday; sourceRecordId=WD-000123; eventType=joiner; ContractType=Employee", "evidence": "source record", "result": "pass" },
     { "id": "CHK-03", "rule": "requiredJoinerAttributes.core", "input": "REQ-01..REQ-08", "evidence": "source record: all eight present and matching", "result": "pass" },
     { "id": "CHK-04", "rule": "requiredJoinerAttributes.customSecurityAttributes[REQ-CSA-01]", "subject": "csa.requested.Employment.ContractType", "input": "Employee", "evidence": "source record", "result": "pass" },

@@ -1,16 +1,16 @@
 {
   "recordVersion": "1.0",
-  "correlationId": "elg-WD-000104-h4tz9p",
+  "correlationId": "elg-WD-000104-k7m2qx",
   "supersedes": null,
   "skill": "mover-orchestrator",
-  "skillVersion": "0.1.0",
+  "skillVersion": "0.2.0",
   "policyId": "contoso-lifecycle-policy",
-  "policyVersion": "1.0.0",
+  "policyVersion": "1.2.0",
   "event": "mover",
   "host": "claude-code",
   "dryRun": false,
-  "startedAt": "2026-09-20T09:03:35.005Z",
-  "completedAt": "2026-09-20T09:13:58.166Z",
+  "startedAt": "2026-10-06T06:55:46.437Z",
+  "completedAt": "2026-10-06T07:02:42.115Z",
   "clockSource": "resourceMeta",
   "source": {
     "system": "workday",
@@ -18,7 +18,7 @@
   },
   "target": {
     "userName": "lidia.holloway@contoso.local",
-    "id": "005bb25d-cae2-48b2-a0e1-5cf6b7bfd4c8",
+    "id": "01a6a65a-86a8-4bda-b698-38f021cda82f",
     "displayName": "Lidia Holloway"
   },
   "decision": "allow_with_approval",
@@ -28,33 +28,43 @@
     {
       "id": "CHK-01",
       "rule": "policyVersion",
-      "input": "1.0.0",
-      "evidence": "entra-lifecycle-policy skill, policy/lifecycle-policy.json; policyId contoso-lifecycle-policy, major version 1",
+      "input": "contoso-lifecycle-policy 1.2.0 (major 1)",
+      "evidence": "entra-lifecycle-policy skill, policy/lifecycle-policy.json",
       "result": "pass"
     },
     {
       "id": "CHK-02",
       "rule": "authoritativeSources[id=workday]",
       "input": "sourceSystem=workday; sourceRecordId=WD-000104; eventType=mover",
-      "evidence": "source record: matches recordIdPattern ^WD-[0-9]{6}$; mover in events",
+      "evidence": "source record: id matches ^WD-[0-9]{6}$; mover in events",
       "result": "pass"
     },
     {
       "id": "CHK-03",
-      "rule": "target",
-      "input": "userName=lidia.holloway@contoso.local",
-      "evidence": "source record: target addressed by userName",
+      "rule": "approvalThresholds.escalations.ambiguousIdentity",
+      "subject": "target.userName",
+      "input": "lidia.holloway@contoso.local",
+      "evidence": "call #1: list_users userName eq lidia.holloway@contoso.local -> totalResults=1, active=true, id 01a6a65a-86a8-4bda-b698-38f021cda82f",
       "result": "pass"
     },
     {
       "id": "CHK-04",
-      "rule": "requiredJoinerAttributes.core[REQ-05, REQ-07]",
-      "input": "department=Engineering; managerUserName=megan.bowen@contoso.local; jobTitle=Platform Analyst",
-      "evidence": "source record: department in REQ-05 list; managerUserName matches REQ-07 pattern; jobTitle free text",
+      "rule": "requiredJoinerAttributes.core[REQ-07]",
+      "subject": "changes.worker.managerUserName",
+      "input": "megan.bowen@contoso.local",
+      "evidence": "source record: matches ^[^@\\s]+@contoso\\.local$; call #2: list_users -> totalResults=1, active=true, id 358a2825-710a-439c-9d87-709d22fdc92f",
       "result": "pass"
     },
     {
       "id": "CHK-05",
+      "rule": "requiredJoinerAttributes.core[REQ-05]",
+      "subject": "changes.worker.department",
+      "input": "Engineering",
+      "evidence": "source record: in [Finance, Engineering, Operations, Human Resources]",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-06",
       "rule": "requiredJoinerAttributes.customSecurityAttributes[REQ-CSA-02]",
       "subject": "csa.requested.Employment.CostCenter",
       "input": "ENG-210",
@@ -62,156 +72,104 @@
       "result": "pass"
     },
     {
-      "id": "CHK-06",
-      "rule": "groupCatalog",
-      "input": "remove=[SG-Finance-AP-Requestors]; add=[]",
-      "evidence": "policy: SG-Finance-AP-Requestors in groupCatalog",
-      "result": "pass"
-    },
-    {
       "id": "CHK-07",
-      "rule": "approvalThresholds.escalations.ambiguousIdentity",
-      "subject": "lidia.holloway@contoso.local",
-      "input": "userName eq lidia.holloway@contoso.local",
-      "evidence": "call #1: list_users -> totalResults 1, id 005bb25d-cae2-48b2-a0e1-5cf6b7bfd4c8, active=true",
+      "rule": "moverRules.compareToPreviousWhenPresent",
+      "subject": "previous.worker.department",
+      "input": "Finance",
+      "evidence": "call #3: get_user enterprise department=Finance; equals previous",
       "result": "pass"
     },
     {
       "id": "CHK-08",
-      "rule": "requiredJoinerAttributes.managerMustResolve",
-      "subject": "megan.bowen@contoso.local",
-      "input": "userName eq megan.bowen@contoso.local",
-      "evidence": "call #2: list_users -> totalResults 1, id a6716bea-795b-4742-87c3-cfdf16070ca5, active=true",
+      "rule": "groupCatalog[SG-Finance-AP-Requestors]",
+      "subject": "SG-Finance-AP-Requestors",
+      "input": "requestedGroups.remove",
+      "evidence": "policy: in catalog (business/low); call #5: held, id 61896578-5f60-4404-a67f-31c41f761619",
       "result": "pass"
     },
     {
       "id": "CHK-09",
-      "rule": "moverRules.compareToPreviousWhenPresent",
-      "subject": "previous.worker.department",
-      "input": "Finance",
-      "evidence": "call #4: get_user enterprise department=Finance; matches previous",
+      "rule": "moverRules.removeOldDepartmentGroups",
+      "subject": "SG-Finance-Users",
+      "input": "approvedBaselineProfiles.profiles.Employee.departmentGroups.Finance",
+      "evidence": "call #4: Employment.ContractType=Employee; call #5: held, id 4b5c791c-536c-4bb9-8713-e1f7d5539855",
       "result": "pass"
     },
     {
       "id": "CHK-10",
-      "rule": "moverRules.sequence[attributes]; riskModel.signals[RS-05, RS-06]",
-      "input": "department Finance->Engineering; manager b885e160-f9ea-4f4a-b395-56c85d5bc192->a6716bea-795b-4742-87c3-cfdf16070ca5; title Treasury Analyst->Platform Analyst",
-      "evidence": "call #4 vs source record: all three differ; RS-05 and RS-06 fire (medium)",
-      "result": "pass"
-    },
-    {
-      "id": "CHK-11",
-      "rule": "moverRules.sequence[customSecurityAttributes]; riskModel.signals[RS-07]",
-      "subject": "csa.current.Employment.CostCenter",
-      "input": "FIN-110 -> ENG-210",
-      "evidence": "call #5 vs source record: differs; RS-07 fires (medium)",
-      "result": "pass"
-    },
-    {
-      "id": "CHK-12",
-      "rule": "moverRules.removeOldDepartmentGroups; approvedBaselineProfiles.profiles.Employee.departmentGroups.Finance",
-      "subject": "SG-Finance-Users",
-      "input": "held",
-      "evidence": "call #5: ContractType=Employee selects profile Employee; call #6: SG-Finance-Users id 8d78743a-8b84-4f07-951e-09025dccec8b held -> planned removal",
-      "result": "pass"
-    },
-    {
-      "id": "CHK-13",
-      "rule": "groupCatalog[SG-Finance-Treasury-Payments].requiresCsa; moverRules.reevaluateHeldGroupCsaGates",
+      "rule": "groupCatalog[SG-Finance-Treasury-Payments].requiresCsa",
       "subject": "csa.effective.Employment.CostCenter",
       "input": "ENG-210",
-      "evidence": "call #6: group held, id 3508d45f-3b2c-42e0-899a-14081b302f53; startsWith FIN- is false against ENG-210 -> planned removal",
+      "evidence": "call #4: current FIN-110; source record requested ENG-210; startsWith FIN- is false; call #5: held, id 1304d506-09a2-4163-beb3-15edeff37555; moverRules.reevaluateHeldGroupCsaGates=true -> removed",
       "result": "warn",
       "reasonCode": "csa_condition_failed"
     },
     {
+      "id": "CHK-11",
+      "rule": "approvedBaselineProfiles.profiles.Employee.departmentGroups.Engineering",
+      "subject": "SG-Engineering-Users",
+      "input": "add",
+      "evidence": "policy: in catalog (business/low, no requiresCsa, approvalRequired=false); call #6: list_groups unfiltered -> 10 groups, 1 match id b41a2f54-4c19-4544-bc9a-fd33b041d8cc; call #5: not currently held",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-12",
+      "rule": "privilegedGroups",
+      "input": "add: SG-Engineering-Users (classification business)",
+      "evidence": "policy: not in privilegedGroups.displayNames, not classification privileged",
+      "result": "pass"
+    },
+    {
+      "id": "CHK-13",
+      "rule": "sodRules",
+      "input": "resulting set = {All Employees, SG-Engineering-Users}",
+      "evidence": "call #5 minus 3 removals plus 1 add; SOD-FIN-001, SOD-FIN-002, SOD-ADM-001 each have 0 members in resulting set",
+      "result": "pass"
+    },
+    {
       "id": "CHK-14",
-      "rule": "groupCatalog[].requiresCsa",
-      "subject": "All Employees, SG-Finance-Users, SG-Finance-AP-Requestors",
-      "input": "requiresCsa=[]",
-      "evidence": "policy: no CSA gate on these held groups",
+      "rule": "moverRules.leaveUncataloguedGroupsUntouched",
+      "input": "(none held)",
+      "evidence": "call #5: all 4 held groups are in groupCatalog",
       "result": "pass"
     },
     {
       "id": "CHK-15",
-      "rule": "moverRules.leaveUncataloguedGroupsUntouched",
-      "input": "0 uncatalogued held groups",
-      "evidence": "call #6: 4 held groups, all in groupCatalog",
-      "result": "pass"
+      "rule": "riskModel.signals[RS-05,RS-06,RS-07,RS-01]",
+      "input": "department changed; manager changed; CSA changed; add riskLevel low",
+      "evidence": "call #3 and call #4 vs source record; riskModel.aggregate=max -> medium; approvalThresholds.decisionByRiskLevel.medium=allow_with_approval",
+      "result": "needs_approval",
+      "reasonCode": "approval_required"
     },
     {
       "id": "CHK-16",
-      "rule": "approvedBaselineProfiles.profiles.Employee.departmentGroups.Engineering",
-      "subject": "SG-Engineering-Users",
-      "input": "not held",
-      "evidence": "call #6: not in membership list -> planned add",
+      "rule": "approvalThresholds.approvalRef",
+      "subject": "REQ-50018",
+      "input": "scope run; approver megan.bowen@contoso.local; sourceRecordId WD-000104",
+      "evidence": "source record approvals[0]: matches ^(CHG|REQ|INC)-[0-9]{5,}$, all requiredFields present, sourceRecordId matches, scope run in approvalScopes",
       "result": "pass"
     },
     {
       "id": "CHK-17",
-      "rule": "costThresholds.groupResolution",
-      "subject": "SG-Engineering-Users",
-      "input": "displayName SG-Engineering-Users",
-      "evidence": "call #3: list_groups all -> totalResults 10, no nextCursor; exactly 1 match, id 0a6279b0-f28b-4851-b328-df7d2638fc6b",
+      "rule": "approvalThresholds.operatorConfirmRequired.medium",
+      "input": "approve elg-WD-000104-k7m2qx",
+      "evidence": "operator message after preview matched operatorConfirmPhrase exactly",
       "result": "pass"
     },
     {
       "id": "CHK-18",
-      "rule": "privilegedGroups",
-      "input": "resulting set = {All Employees, SG-Engineering-Users}",
-      "evidence": "policy: neither group in privilegedGroups.displayNames nor classification privileged",
-      "result": "pass"
-    },
-    {
-      "id": "CHK-19",
-      "rule": "sodRules[SOD-FIN-001, SOD-FIN-002, SOD-ADM-001]; sodEvaluation",
-      "input": "resulting set = {All Employees, SG-Engineering-Users}",
-      "evidence": "call #6 memberships minus 3 planned removals plus SG-Engineering-Users; no rule has 2+ conflictingGroups in the set",
-      "result": "pass"
-    },
-    {
-      "id": "CHK-20",
-      "rule": "groupCatalog[SG-Engineering-Users]; approvalThresholds.decisionByRiskLevel",
-      "subject": "SG-Engineering-Users",
-      "input": "business, riskLevel=low, approvalRequired=false",
-      "evidence": "policy: decisionByRiskLevel[low]=allow; RS-01 low",
-      "result": "pass"
-    },
-    {
-      "id": "CHK-21",
-      "rule": "riskModel.aggregate",
-      "input": "RS-05 medium, RS-06 medium, RS-07 medium, RS-01 low; RS-08 not fired",
-      "evidence": "CHK-10, CHK-11, CHK-20: max = medium",
-      "result": "pass"
-    },
-    {
-      "id": "CHK-22",
-      "rule": "approvalThresholds.approvalRef; approvalThresholds.approvalScopes",
-      "subject": "REQ-50018",
-      "input": "scope=run; approver=megan.bowen@contoso.local; sourceRecordId=WD-000104",
-      "evidence": "source record approvals[0]: matches ^(CHG|REQ|INC)-[0-9]{5,}$; requiredFields present; sourceRecordId matches; scope run in approvalScopes",
-      "result": "pass"
-    },
-    {
-      "id": "CHK-23",
-      "rule": "approvalThresholds.operatorConfirmRequired[medium]; approvalThresholds.operatorConfirmPhrase",
-      "input": "approve elg-WD-000104-h4tz9p",
-      "evidence": "operator message after the preview: exact phrase received; no write was made before it",
-      "result": "pass"
-    },
-    {
-      "id": "CHK-24",
-      "rule": "costThresholds.maxToolCallsPerRun.mover-orchestrator; costThresholds.warnAtPercent",
+      "rule": "costThresholds.maxToolCallsPerRun.mover-orchestrator",
       "input": "15 of 20 (75%)",
       "evidence": "calls #1-#15; below warnAtPercent 80",
       "result": "pass"
     },
     {
-      "id": "CHK-25",
+      "id": "CHK-19",
       "rule": "evaluation.decisionPrecedence",
-      "input": "allow_with_approval (CHK-21 medium; CHK-22 and CHK-23 satisfied)",
-      "evidence": "worst row result across CHK-01..CHK-24 is warn (CHK-13); riskModel.aggregate=max -> medium; decisionByRiskLevel[medium]=allow_with_approval",
-      "result": "pass"
+      "input": "allow_with_approval (CHK-15); max risk = medium",
+      "evidence": "worst result across rows above; approval and confirmation satisfied in CHK-16 and CHK-17",
+      "result": "needs_approval",
+      "reasonCode": "approval_required"
     }
   ],
   "approvals": [
@@ -230,7 +188,7 @@
       "seq": 1,
       "tool": "update_user",
       "target": "lidia.holloway@contoso.local",
-      "argsSummary": "id=005bb25d-cae2-48b2-a0e1-5cf6b7bfd4c8; replace enterprise department=Engineering; replace enterprise manager {value: a6716bea-795b-4742-87c3-cfdf16070ca5}; replace title=Platform Analyst; one PATCH",
+      "argsSummary": "id=01a6a65a-86a8-4bda-b698-38f021cda82f; replace enterprise department=Engineering; replace enterprise manager {value: 358a2825-710a-439c-9d87-709d22fdc92f}; replace title=Platform Analyst (one PATCH)",
       "purpose": "attributes",
       "policyBasis": [
         "moverRules.sequence[attributes]"
@@ -241,10 +199,11 @@
       "seq": 2,
       "tool": "update_user_custom_security_attributes",
       "target": "lidia.holloway@contoso.local",
-      "argsSummary": "id=005bb25d-cae2-48b2-a0e1-5cf6b7bfd4c8; replace Employment.CostCenter=ENG-210",
+      "argsSummary": "id=01a6a65a-86a8-4bda-b698-38f021cda82f; replace Employment.CostCenter=ENG-210",
       "purpose": "CSA",
       "policyBasis": [
-        "moverRules.sequence[customSecurityAttributes]"
+        "moverRules.sequence[customSecurityAttributes]",
+        "requiredJoinerAttributes.customSecurityAttributes[REQ-CSA-02]"
       ],
       "status": "executed"
     },
@@ -252,10 +211,11 @@
       "seq": 3,
       "tool": "remove_group_member",
       "target": "SG-Finance-AP-Requestors",
-      "argsSummary": "id=9848cdab-c7b2-464e-8f02-627dbbafd2f6; memberId=005bb25d-cae2-48b2-a0e1-5cf6b7bfd4c8",
+      "argsSummary": "id=61896578-5f60-4404-a67f-31c41f761619; memberId=01a6a65a-86a8-4bda-b698-38f021cda82f",
       "purpose": "requested removal",
       "policyBasis": [
-        "requestedGroups.remove"
+        "requestedGroups.remove",
+        "moverRules.sequence[groupRemoves]"
       ],
       "status": "executed"
     },
@@ -263,7 +223,7 @@
       "seq": 4,
       "tool": "remove_group_member",
       "target": "SG-Finance-Users",
-      "argsSummary": "id=8d78743a-8b84-4f07-951e-09025dccec8b; memberId=005bb25d-cae2-48b2-a0e1-5cf6b7bfd4c8",
+      "argsSummary": "id=4b5c791c-536c-4bb9-8713-e1f7d5539855; memberId=01a6a65a-86a8-4bda-b698-38f021cda82f",
       "purpose": "old department group",
       "policyBasis": [
         "moverRules.removeOldDepartmentGroups",
@@ -275,8 +235,8 @@
       "seq": 5,
       "tool": "remove_group_member",
       "target": "SG-Finance-Treasury-Payments",
-      "argsSummary": "id=3508d45f-3b2c-42e0-899a-14081b302f53; memberId=005bb25d-cae2-48b2-a0e1-5cf6b7bfd4c8",
-      "purpose": "CSA gate CostCenter startsWith FIN- no longer holds",
+      "argsSummary": "id=1304d506-09a2-4163-beb3-15edeff37555; memberId=01a6a65a-86a8-4bda-b698-38f021cda82f",
+      "purpose": "CSA gate no longer holds",
       "policyBasis": [
         "moverRules.reevaluateHeldGroupCsaGates",
         "groupCatalog[SG-Finance-Treasury-Payments].requiresCsa"
@@ -287,10 +247,11 @@
       "seq": 6,
       "tool": "add_group_members",
       "target": "SG-Engineering-Users",
-      "argsSummary": "id=0a6279b0-f28b-4851-b328-df7d2638fc6b; memberIds=[005bb25d-cae2-48b2-a0e1-5cf6b7bfd4c8]",
+      "argsSummary": "id=b41a2f54-4c19-4544-bc9a-fd33b041d8cc; memberIds=[01a6a65a-86a8-4bda-b698-38f021cda82f]",
       "purpose": "new department group",
       "policyBasis": [
-        "approvedBaselineProfiles.profiles.Employee.departmentGroups.Engineering"
+        "approvedBaselineProfiles.profiles.Employee.departmentGroups.Engineering",
+        "moverRules.sequence[groupAdds]"
       ],
       "status": "executed"
     },
@@ -298,8 +259,8 @@
       "seq": 7,
       "tool": "get_user",
       "target": "lidia.holloway@contoso.local",
-      "argsSummary": "id=005bb25d-cae2-48b2-a0e1-5cf6b7bfd4c8",
-      "purpose": "verify attributes and active unchanged",
+      "argsSummary": "id=01a6a65a-86a8-4bda-b698-38f021cda82f",
+      "purpose": "verify attributes, active unchanged",
       "policyBasis": [
         "auditRequirements.verificationRequiredBeforeCompleted"
       ],
@@ -309,7 +270,7 @@
       "seq": 8,
       "tool": "get_user_custom_security_attributes",
       "target": "lidia.holloway@contoso.local",
-      "argsSummary": "id=005bb25d-cae2-48b2-a0e1-5cf6b7bfd4c8; attributeSets=[Employment, Compliance]",
+      "argsSummary": "id=01a6a65a-86a8-4bda-b698-38f021cda82f; attributeSets=[Employment, Compliance]",
       "purpose": "verify CSA",
       "policyBasis": [
         "auditRequirements.verificationRequiredBeforeCompleted"
@@ -320,7 +281,7 @@
       "seq": 9,
       "tool": "list_groups",
       "target": "lidia.holloway@contoso.local",
-      "argsSummary": "filter members.value eq 005bb25d-cae2-48b2-a0e1-5cf6b7bfd4c8; attributes id, displayName",
+      "argsSummary": "filter members.value eq 01a6a65a-86a8-4bda-b698-38f021cda82f; attributes id,displayName",
       "purpose": "verify memberships",
       "policyBasis": [
         "auditRequirements.verificationRequiredBeforeCompleted"
@@ -335,8 +296,8 @@
       "phase": "resolve",
       "tool": "list_users",
       "status": "ok",
-      "at": "2026-09-20T09:04:30.104Z",
-      "resultSummary": "userName eq lidia.holloway@contoso.local -> totalResults 1; id 005bb25d-cae2-48b2-a0e1-5cf6b7bfd4c8; active=true"
+      "at": "2026-10-06T06:55:46.661Z",
+      "resultSummary": "userName eq lidia.holloway@contoso.local -> totalResults=1; id 01a6a65a-86a8-4bda-b698-38f021cda82f; active=true"
     },
     {
       "call": 2,
@@ -344,35 +305,35 @@
       "phase": "resolve",
       "tool": "list_users",
       "status": "ok",
-      "at": "2026-09-20T09:03:35.005Z",
-      "resultSummary": "userName eq megan.bowen@contoso.local -> totalResults 1; id a6716bea-795b-4742-87c3-cfdf16070ca5; active=true"
+      "at": "2026-10-06T06:55:46.437Z",
+      "resultSummary": "userName eq megan.bowen@contoso.local -> totalResults=1; id 358a2825-710a-439c-9d87-709d22fdc92f; active=true"
     },
     {
       "call": 3,
       "seq": 0,
-      "phase": "resolve",
-      "tool": "list_groups",
+      "phase": "read",
+      "tool": "get_user",
       "status": "ok",
-      "at": "2026-09-20T09:04:30.236Z",
-      "resultSummary": "all groups, attributes id,displayName -> totalResults 10, no nextCursor; SG-Engineering-Users id 0a6279b0-f28b-4851-b328-df7d2638fc6b"
+      "at": "2026-10-06T06:55:46.661Z",
+      "resultSummary": "department=Finance; employeeNumber=100004; manager=e8d221da-8c63-45e2-a108-1e0a3f494998; title=Treasury Analyst; active=true; CSA object in payload ignored"
     },
     {
       "call": 4,
       "seq": 0,
       "phase": "read",
-      "tool": "get_user",
+      "tool": "get_user_custom_security_attributes",
       "status": "ok",
-      "at": "2026-09-20T09:04:30.104Z",
-      "resultSummary": "department=Finance; title=Treasury Analyst; manager=b885e160-f9ea-4f4a-b395-56c85d5bc192; employeeNumber=100004; active=true"
+      "at": "2026-10-06T06:55:46.661Z",
+      "resultSummary": "Employment{ContractType=Employee, CostCenter=FIN-110}; Compliance{DataClassification=Confidential, LegalHold=false}"
     },
     {
       "call": 5,
       "seq": 0,
       "phase": "read",
-      "tool": "get_user_custom_security_attributes",
+      "tool": "list_groups",
       "status": "ok",
-      "at": "2026-09-20T09:04:30.104Z",
-      "resultSummary": "Employment.ContractType=Employee; Employment.CostCenter=FIN-110; Compliance.DataClassification=Confidential; Compliance.LegalHold=false"
+      "at": "2026-10-06T06:55:46.694Z",
+      "resultSummary": "members.value eq 01a6a65a-86a8-4bda-b698-38f021cda82f -> totalResults=4: All Employees b4417a3d-c878-462a-a37c-671ceaa53cd1, SG-Finance-Users 4b5c791c-536c-4bb9-8713-e1f7d5539855, SG-Finance-AP-Requestors 61896578-5f60-4404-a67f-31c41f761619, SG-Finance-Treasury-Payments 1304d506-09a2-4163-beb3-15edeff37555"
     },
     {
       "call": 6,
@@ -380,8 +341,8 @@
       "phase": "read",
       "tool": "list_groups",
       "status": "ok",
-      "at": "2026-09-20T09:04:30.209Z",
-      "resultSummary": "members.value eq 005bb25d-cae2-48b2-a0e1-5cf6b7bfd4c8 -> totalResults 4: All Employees, SG-Finance-Users, SG-Finance-AP-Requestors, SG-Finance-Treasury-Payments"
+      "at": "2026-10-06T06:55:46.701Z",
+      "resultSummary": "unfiltered catalog -> totalResults=10, no nextCursor; SG-Engineering-Users -> 1 match b41a2f54-4c19-4544-bc9a-fd33b041d8cc"
     },
     {
       "call": 7,
@@ -390,7 +351,7 @@
       "tool": "update_user",
       "status": "ok",
       "at": null,
-      "resultSummary": "ok=true; id 005bb25d-cae2-48b2-a0e1-5cf6b7bfd4c8; 3 replace ops in one PATCH"
+      "resultSummary": "ok=true; id 01a6a65a-86a8-4bda-b698-38f021cda82f; 3 replace ops (department, manager, title) in one PATCH"
     },
     {
       "call": 8,
@@ -399,7 +360,7 @@
       "tool": "update_user_custom_security_attributes",
       "status": "ok",
       "at": null,
-      "resultSummary": "ok=true; id 005bb25d-cae2-48b2-a0e1-5cf6b7bfd4c8; replace Employment.CostCenter=ENG-210"
+      "resultSummary": "ok=true; id 01a6a65a-86a8-4bda-b698-38f021cda82f; 1 replace op Employment.CostCenter=ENG-210"
     },
     {
       "call": 9,
@@ -408,7 +369,7 @@
       "tool": "remove_group_member",
       "status": "ok",
       "at": null,
-      "resultSummary": "ok=true; group 9848cdab-c7b2-464e-8f02-627dbbafd2f6 (SG-Finance-AP-Requestors); memberId 005bb25d-cae2-48b2-a0e1-5cf6b7bfd4c8"
+      "resultSummary": "ok=true; group 61896578-5f60-4404-a67f-31c41f761619 (SG-Finance-AP-Requestors); memberId 01a6a65a-86a8-4bda-b698-38f021cda82f"
     },
     {
       "call": 10,
@@ -417,7 +378,7 @@
       "tool": "remove_group_member",
       "status": "ok",
       "at": null,
-      "resultSummary": "ok=true; group 8d78743a-8b84-4f07-951e-09025dccec8b (SG-Finance-Users); memberId 005bb25d-cae2-48b2-a0e1-5cf6b7bfd4c8"
+      "resultSummary": "ok=true; group 4b5c791c-536c-4bb9-8713-e1f7d5539855 (SG-Finance-Users); memberId 01a6a65a-86a8-4bda-b698-38f021cda82f"
     },
     {
       "call": 11,
@@ -426,7 +387,7 @@
       "tool": "remove_group_member",
       "status": "ok",
       "at": null,
-      "resultSummary": "ok=true; group 3508d45f-3b2c-42e0-899a-14081b302f53 (SG-Finance-Treasury-Payments); memberId 005bb25d-cae2-48b2-a0e1-5cf6b7bfd4c8"
+      "resultSummary": "ok=true; group 1304d506-09a2-4163-beb3-15edeff37555 (SG-Finance-Treasury-Payments); memberId 01a6a65a-86a8-4bda-b698-38f021cda82f"
     },
     {
       "call": 12,
@@ -435,7 +396,7 @@
       "tool": "add_group_members",
       "status": "ok",
       "at": null,
-      "resultSummary": "ok=true; group 0a6279b0-f28b-4851-b328-df7d2638fc6b (SG-Engineering-Users); memberIds [005bb25d-cae2-48b2-a0e1-5cf6b7bfd4c8]; patchCalls=1"
+      "resultSummary": "ok=true; group b41a2f54-4c19-4544-bc9a-fd33b041d8cc (SG-Engineering-Users); memberIds=[01a6a65a-86a8-4bda-b698-38f021cda82f]; patchCalls=1"
     },
     {
       "call": 13,
@@ -443,8 +404,8 @@
       "phase": "verify",
       "tool": "get_user",
       "status": "ok",
-      "at": "2026-09-20T09:13:29.966Z",
-      "resultSummary": "department=Engineering; manager=a6716bea-795b-4742-87c3-cfdf16070ca5; title=Platform Analyst; active=true; employeeNumber=100004"
+      "at": "2026-10-06T07:02:32.191Z",
+      "resultSummary": "department=Engineering; manager=358a2825-710a-439c-9d87-709d22fdc92f; title=Platform Analyst; active=true; employeeNumber=100004; userName and mailNickname unchanged"
     },
     {
       "call": 14,
@@ -452,8 +413,8 @@
       "phase": "verify",
       "tool": "get_user_custom_security_attributes",
       "status": "ok",
-      "at": "2026-09-20T09:13:29.966Z",
-      "resultSummary": "Employment.CostCenter=ENG-210; Employment.ContractType=Employee; Compliance.DataClassification=Confidential; Compliance.LegalHold=false"
+      "at": "2026-10-06T07:02:32.191Z",
+      "resultSummary": "Employment{ContractType=Employee, CostCenter=ENG-210}; Compliance{DataClassification=Confidential, LegalHold=false}"
     },
     {
       "call": 15,
@@ -461,89 +422,54 @@
       "phase": "verify",
       "tool": "list_groups",
       "status": "ok",
-      "at": "2026-09-20T09:13:58.166Z",
-      "resultSummary": "members.value eq 005bb25d-cae2-48b2-a0e1-5cf6b7bfd4c8 -> totalResults 2: All Employees, SG-Engineering-Users"
+      "at": "2026-10-06T07:02:42.115Z",
+      "resultSummary": "members.value eq 01a6a65a-86a8-4bda-b698-38f021cda82f -> totalResults=2: All Employees b4417a3d-c878-462a-a37c-671ceaa53cd1, SG-Engineering-Users b41a2f54-4c19-4544-bc9a-fd33b041d8cc"
     }
   ],
   "skippedActions": [],
   "verificationFindings": {
     "proved": [
       {
-        "check": "enterprise department equals planned after-value",
+        "check": "attributes equal planned after-values and active unchanged",
         "tool": "get_user",
-        "expected": "Engineering",
-        "observed": "Engineering",
+        "expected": "department=Engineering; manager=358a2825-710a-439c-9d87-709d22fdc92f; title=Platform Analyst; active=true",
+        "observed": "department=Engineering; manager=358a2825-710a-439c-9d87-709d22fdc92f; title=Platform Analyst; active=true (call #13)",
         "result": "pass"
       },
       {
-        "check": "enterprise manager equals resolved new manager id",
-        "tool": "get_user",
-        "expected": "a6716bea-795b-4742-87c3-cfdf16070ca5",
-        "observed": "a6716bea-795b-4742-87c3-cfdf16070ca5",
-        "result": "pass"
-      },
-      {
-        "check": "title equals planned after-value",
-        "tool": "get_user",
-        "expected": "Platform Analyst",
-        "observed": "Platform Analyst",
-        "result": "pass"
-      },
-      {
-        "check": "active unchanged",
-        "tool": "get_user",
-        "expected": "true",
-        "observed": "true",
-        "result": "pass"
-      },
-      {
-        "check": "Employment.CostCenter equals planned value",
+        "check": "Employment.CostCenter equals planned value; other CSAs unchanged",
         "tool": "get_user_custom_security_attributes",
-        "expected": "ENG-210",
-        "observed": "ENG-210",
-        "result": "pass"
-      },
-      {
-        "check": "other CSAs unchanged",
-        "tool": "get_user_custom_security_attributes",
-        "expected": "ContractType=Employee; DataClassification=Confidential; LegalHold=false",
-        "observed": "ContractType=Employee; DataClassification=Confidential; LegalHold=false",
+        "expected": "Employment.CostCenter=ENG-210; ContractType=Employee; Compliance unchanged",
+        "observed": "Employment{ContractType=Employee, CostCenter=ENG-210}; Compliance{DataClassification=Confidential, LegalHold=false} (call #14)",
         "result": "pass"
       },
       {
         "check": "memberships equal (current - removals) + additions",
         "tool": "list_groups",
         "expected": "[All Employees, SG-Engineering-Users]",
-        "observed": "[All Employees, SG-Engineering-Users]",
+        "observed": "[All Employees, SG-Engineering-Users] (call #15)",
         "result": "pass"
       }
     ],
     "notVerifiable": [
-      "sign-in sessions and tokens (existing tokens may still carry Finance group claims until refresh)",
+      "sign-in sessions and tokens",
       "nested or transitive group access",
-      "application role assignments tied to the old Finance groups",
-      "licence assignment",
-      "PIM eligibility"
+      "application role assignments",
+      "PIM eligibility",
+      "licence assignment"
     ]
   },
   "residualRisk": [
     {
       "id": "RR-01",
-      "description": "SG-Finance-Treasury-Payments membership was removed from the directory, but tokens issued before 2026-09-20T09:13Z may still carry the claim until they expire, and in-flight payment approvals assigned to Lidia Holloway in the treasury application cannot be seen through SCIM.",
-      "severity": "medium",
+      "description": "SG-Finance-Treasury-Payments was removed automatically because the CostCenter gate no longer holds. Treasury should confirm no open payment-release duties remain assigned to Lidia Holloway.",
+      "severity": "low",
       "owner": "treasury",
-      "dueBy": "2026-09-22"
+      "dueBy": null
     },
     {
       "id": "RR-02",
-      "description": "The record's effectiveDate is 2026-09-22 but the change was applied on 2026-09-20; Lidia Holloway holds Engineering access and has lost Finance access two days early. The policy has no effective-date rule for movers, so this was applied as instructed.",
-      "severity": "low",
-      "owner": "hr-data",
-      "dueBy": "2026-09-22"
-    },
-    {
-      "id": "RR-03",
-      "description": "Application roles, licences and nested access that depended on SG-Finance-Users or SG-Finance-AP-Requestors are outside the SCIM read surface and were not verified.",
+      "description": "Existing sign-in sessions and tokens may carry the removed Finance group claims until they expire; the SCIM surface cannot revoke or observe them.",
       "severity": "low",
       "owner": "identity-ops",
       "dueBy": null
@@ -554,9 +480,9 @@
     "budget": 20,
     "byTool": {
       "list_users": 2,
-      "list_groups": 3,
       "get_user": 2,
       "get_user_custom_security_attributes": 2,
+      "list_groups": 3,
       "update_user": 1,
       "update_user_custom_security_attributes": 1,
       "remove_group_member": 3,
@@ -564,22 +490,21 @@
     }
   },
   "nextSteps": [
-    "treasury: confirm no pending payment approvals remain assigned to lidia.holloway@contoso.local in the treasury application, and revoke sessions if immediate removal of payment rights is required.",
-    "hr-data: confirm that applying WD-000104 on 2026-09-20, ahead of effectiveDate 2026-09-22, is acceptable.",
-    "identity-ops: review application role assignments and licences that were scoped to the removed Finance groups.",
-    "platform-eng: any further Engineering entitlement (for example SG-Engineering-ProdDeploy) needs a separate approved request; none was requested in WD-000104."
+    "Treasury (owner of SG-Finance-Treasury-Payments): confirm the removal is expected and reassign any open payment-release duties.",
+    "Identity-ops: revoke Lidia Holloway's sessions only if Finance access must end before current tokens expire; otherwise no action.",
+    "No corrective Workday record is needed; WD-000104 is fully applied."
   ],
-  "summary": "Lidia Holloway (id 005bb25d-cae2-48b2-a0e1-5cf6b7bfd4c8) moved from Finance to Engineering: department, manager (now Megan Bowen, id a6716bea-795b-4742-87c3-cfdf16070ca5) and title Platform Analyst were replaced in one PATCH, Employment.CostCenter changed from FIN-110 to ENG-210, memberships in SG-Finance-AP-Requestors, SG-Finance-Users and SG-Finance-Treasury-Payments were removed, and SG-Engineering-Users was added. The change came from Workday mover record WD-000104 with effective date 2026-09-22. Rows CHK-10 and CHK-11 raised medium risk through RS-05, RS-06 and RS-07, approval REQ-50018 (scope run) plus the operator's confirmation satisfied CHK-22 and CHK-23, CHK-12 drove the old-department removal, CHK-13 stripped Treasury-Payments because its CostCenter gate no longer held, and CHK-19 found no SoD conflict. All Employees was retained as baseline, userName, mailNickname and active were untouched, and no requested group was skipped or denied. Treasury should confirm no in-flight payment approvals remain with Lidia, identity-ops should note that pre-change tokens may carry old group claims until refresh, and HR should confirm the two-day-early application against the effective date.",
+  "summary": "Lidia Holloway (01a6a65a-86a8-4bda-b698-38f021cda82f) moved from Finance to Engineering: department, manager (Megan Bowen, 358a2825-710a-439c-9d87-709d22fdc92f), title Platform Analyst and Employment.CostCenter ENG-210 were written, SG-Finance-AP-Requestors, SG-Finance-Users and SG-Finance-Treasury-Payments were removed, and SG-Engineering-Users was added. The change came from Workday mover record WD-000104, effective 2026-09-22. Signals RS-05, RS-06 and RS-07 made the run medium risk, so approval REQ-50018 (scope run) and operator confirmation were required and given; SG-Finance-Users was removed under moverRules.removeOldDepartmentGroups, SG-Finance-AP-Requestors at the record's request, and SG-Finance-Treasury-Payments because its CostCenter gate (startsWith FIN-) failed against ENG-210 (CHK-10). All Employees, userName, mailNickname, active, ContractType and the Compliance attributes were left untouched, and no SoD rule fired on the resulting set. Treasury should confirm the automatic removal and reassign any open payment duties; sessions carrying Finance claims expire on their own schedule.",
   "details": {
     "before": {
       "attributes": {
         "department": "Finance",
         "title": "Treasury Analyst",
-        "manager": "b885e160-f9ea-4f4a-b395-56c85d5bc192",
+        "manager": "e8d221da-8c63-45e2-a108-1e0a3f494998",
         "employeeNumber": "100004",
         "active": true
       },
-      "csa": {
+      "customSecurityAttributes": {
         "Employment": {
           "ContractType": "Employee",
           "CostCenter": "FIN-110"
@@ -600,11 +525,11 @@
       "attributes": {
         "department": "Engineering",
         "title": "Platform Analyst",
-        "manager": "a6716bea-795b-4742-87c3-cfdf16070ca5",
+        "manager": "358a2825-710a-439c-9d87-709d22fdc92f",
         "employeeNumber": "100004",
         "active": true
       },
-      "csa": {
+      "customSecurityAttributes": {
         "Employment": {
           "ContractType": "Employee",
           "CostCenter": "ENG-210"
@@ -619,26 +544,20 @@
         "SG-Engineering-Users"
       ]
     },
-    "signalsFired": [
-      "RS-05",
-      "RS-06",
-      "RS-07",
-      "RS-01"
-    ],
     "groupResults": [
       {
         "displayName": "SG-Engineering-Users",
-        "id": "0a6279b0-f28b-4851-b328-df7d2638fc6b",
-        "action": "add",
+        "id": "b41a2f54-4c19-4544-bc9a-fd33b041d8cc",
         "result": "allow",
         "reasonCodes": [],
-        "ruleIds": [],
+        "ruleIds": [
+          "RS-01"
+        ],
         "approvalScopeNeeded": null
       },
       {
         "displayName": "SG-Finance-AP-Requestors",
-        "id": "9848cdab-c7b2-464e-8f02-627dbbafd2f6",
-        "action": "remove",
+        "id": "61896578-5f60-4404-a67f-31c41f761619",
         "result": "allow",
         "reasonCodes": [],
         "ruleIds": [],
@@ -646,28 +565,27 @@
       },
       {
         "displayName": "SG-Finance-Users",
-        "id": "8d78743a-8b84-4f07-951e-09025dccec8b",
-        "action": "remove",
+        "id": "4b5c791c-536c-4bb9-8713-e1f7d5539855",
         "result": "allow",
         "reasonCodes": [],
-        "ruleIds": [],
+        "ruleIds": [
+          "moverRules.removeOldDepartmentGroups"
+        ],
         "approvalScopeNeeded": null
       },
       {
         "displayName": "SG-Finance-Treasury-Payments",
-        "id": "3508d45f-3b2c-42e0-899a-14081b302f53",
-        "action": "remove",
+        "id": "1304d506-09a2-4163-beb3-15edeff37555",
         "result": "allow",
         "reasonCodes": [
           "csa_condition_failed"
         ],
-        "ruleIds": [],
+        "ruleIds": [
+          "groupCatalog[SG-Finance-Treasury-Payments].requiresCsa",
+          "moverRules.reevaluateHeldGroupCsaGates"
+        ],
         "approvalScopeNeeded": null
       }
-    ],
-    "operatorConfirmation": {
-      "phrase": "approve elg-WD-000104-h4tz9p",
-      "received": true
-    }
+    ]
   }
 }

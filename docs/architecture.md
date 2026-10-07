@@ -1,6 +1,6 @@
 # Architecture
 
-`entra-lifecycle-guardrails` splits lifecycle automation into two planes. The **governance plane** is six markdown Agent Skills that read one policy and decide. The **execution plane** is the published `entra-scim-mcp` server (0.2.1), which validates and sends SCIM requests. Neither knows the other's internals: the skills never build HTTP, and the server never reads the policy.
+`entra-lifecycle-guardrails` splits lifecycle automation into two planes. The **governance plane** is seven markdown Agent Skills that read one policy and decide. The **execution plane** is the published `entra-scim-mcp` server (0.3.0), which validates and sends SCIM requests. Neither knows the other's internals: the skills never build HTTP, and the server never reads the policy. A third element sits beside the planes without belonging to either: a **System One decision model** that answers typed questions about an inbound request for the front-door skill. It knows no policy and touches no tenant; it only answers.
 
 ## The two planes
 
@@ -8,21 +8,26 @@
 flowchart LR
   HR["Operator or HR record<br/>(joiner / mover / leaver JSON)"]
   HOST["Agent host<br/>MCPJam Inspector or Claude Code"]
-  subgraph GOV["Governance plane: six markdown Agent Skills"]
+  subgraph GOV["Governance plane: seven markdown Agent Skills"]
     direction TB
     POL["entra-lifecycle-policy<br/>policy JSON, schemas, glossary"]
+    INTAKE["lifecycle-intake<br/>route by eventType or ask the decision model; screen; request the record"]
     GUARD["entitlement-guardrail<br/>catalog, privileged rules, CSA gates, SoD, approvals"]
     ORCH["joiner / mover / leaver orchestrators<br/>validate, resolve, preview, gate, execute, verify"]
     AUD["identity-change-auditor<br/>decision record"]
   end
-  subgraph EXEC["Execution plane: entra-scim-mcp 0.2.1"]
+  subgraph EXEC["Execution plane: entra-scim-mcp 0.3.0"]
     MCP["18 stdio tools<br/>client-side filter and PATCH validation<br/>optional ENTRA_SCIM_DRY_RUN=1"]
   end
   API["Entra SCIM Provisioning API<br/>graph.microsoft.com/rp/scim"]
   MOCK["entra-scim-mock-server<br/>127.0.0.1:8990, seeded contoso.local"]
+  DEC["entra-lifecycle-intake: System One decision model<br/>stub | Jev | Laya — typed answers with probabilities, no text"]
   REC[("Decision record<br/>summary + JSON")]
 
-  HR --> HOST --> ORCH
+  HR --> HOST --> INTAKE
+  INTAKE -- "structured record: route, no model" --> ORCH
+  INTAKE -- "free text: one system_one call" --> DEC
+  INTAKE -.-> POL
   ORCH -- "Step 0: load" --> POL
   ORCH -- "embedded, zero calls" --> GUARD
   GUARD -.-> POL
@@ -33,13 +38,15 @@ flowchart LR
   AUD --> REC
 ```
 
-The operator (or an HR feed) hands a source record to the agent host. The host has the skills in context and the MCP server connected. An orchestrator loads the policy, runs the guardrail without any tool call, and only then starts numbering calls to `entra-scim-mcp`. The server turns each call into one SCIM request against the mock or the live API. At the end the auditor produces the decision record from what is in the transcript. The record leaves the system to the side; it is the artefact a reviewer reads, not something the tenant stores.
+The operator (or an HR feed) hands a request to the agent host. The host has the skills in context and both MCP servers connected. If the request is a structured record with a valid `eventType`, the front door routes it to its orchestrator with no model call; if it is free text, the front door asks the decision model the policy's three typed questions in one `system_one` call and then routes, asks for the authoritative record, sends it to manual review or refuses it by threshold. An orchestrator loads the policy, runs the guardrail without any tool call, and only then starts numbering calls to `entra-scim-mcp`. The server turns each call into one SCIM request against the mock or the live API. At the end the auditor produces the decision record from what is in the transcript. The record leaves the system to the side; it is the artefact a reviewer reads, not something the tenant stores.
 
 ## Layering rules
 
 | Layer | Owns | Never does |
 |---|---|---|
 | Policy skill (`entra-lifecycle-policy`) | The tenant rules as JSON: sources, required attributes and CSAs, group catalog, privileged groups, SoD rules, risk signals, approval thresholds, joiner/mover/leaver sequences, retained access, naming, cost budgets, audit requirements. Its JSON Schema and the decision-record schema. | Decide anything. Call a tool. Store an object id. |
+| Front door (`lifecycle-intake`) | Structured-record bypass; one `system_one` call for free text with the policy's questions verbatim; the ordered thresholds (override → urgency → low confidence → refuse → route); asking for the authoritative record; a typed, probability-bearing check row as evidence. | Author or extract a record from prose. Set risk from a probability. Call an `entra-scim-mcp` tool. Run an orchestrator on a sentence. |
+| Decision model (`entra-lifecycle-intake` server: stub, Jev or Laya) | Answering typed questions about a block of state: `choice`, `score`, `noul`, each with probabilities. Naming the backend, model and latency. | Read the policy. Know what a joiner is. Generate text. Touch a directory. |
 | Guardrail (`entitlement-guardrail`) | Per-group evaluation in a fixed order: catalog, tenant resolution, privileged, allowed at joiner, profile risk ceiling, CSA gates, SoD on the resulting set, approval required, approval valid. Run decision by precedence, run risk by max. | Write. Override a `deny` with an approval. Pick a "closest match" group name. |
 | Orchestrators (`joiner-`, `mover-`, `leaver-orchestrator`) | Record validation, id resolution, the preview, the gate, execution in policy order, verification reads, and handing evidence to the auditor. | Call discovery tools (`get_service_provider_config`, `list_resource_types`, `list_schemas`). Call `list_users` without a filter. Create, update or delete groups. Reuse an id from an earlier turn. Show a password. |
 | Auditor (`identity-change-auditor`) | The decision record and the plain summary, built only from transcript evidence. Outcome classification. | Call a tool. Invent an id, timestamp, approval ref or count. Say `completed` without a proved verification finding. |
@@ -59,9 +66,11 @@ Every orchestrator runs the same eight steps: validate, guardrail, resolve, prev
 | Control | Where it lives | Effect |
 |---|---|---|
 | Zero calls before validation passes | Steps 1 and 2 of every orchestrator | A record with a missing mandatory CSA, an unknown source or a bad id pattern never reaches the tenant. S1 ends with `Tool calls: 0 of 20`. |
+| A cheap, typed front door | `intake.*`, RS-14 to RS-16 | A sentence is classified once by a decision model for a fraction of a cent, and either routed (then the record is still required), sent to manual review, or refused before any skill or SCIM tool runs. S0c refuses an "urgent, skip the preview" request with one classifier call and nothing else. |
 | Preview with zero calls | Step 4 | The numbered plan with resolved ids and a policy path per row is printed before any write. |
 | Approval reference | `approvalThresholds.approvalRef` | Must be supplied by the operator or the record, match `^(CHG\|REQ\|INC)-[0-9]{5,}$`, carry `ref`, `scope`, `approver`, `sourceRecordId`, and match the record. A `deny` is never overridable. |
 | Operator confirmation | `approvalThresholds.operatorConfirmRequired` | Medium and high risk end the turn. Only a later message containing `approve <correlationId>` continues; "yes" does not. |
+| Friction where the risk is | `approvalThresholds.decisionByRiskLevel`, `operatorConfirmRequired` | Low risk runs straight through: S3c (a title change) prints `Gate: low risk, proceeding` and completes in one turn with no approval reference. Medium and high stop for one. |
 | Create inactive, activate last | `joinerRules.createInactiveUntilVerified` | `provision_user` with `active: false`; `update_user active=true` only after three verification reads pass. A failure mid-sequence leaves an inactive account, which is the compensating control. |
 | One removal per call, in policy order | `offboardingOrder.removalOrder`, hard rules | Privileged groups first. A 404 on `remove_group_member` means "not a member" and is confirmed at verification. Nothing is called on a user after `deprovision_user`. |
 | Retained access is explicit | `retainedAccessRules` | `SG-Legal-Hold` (RET-001) is never removed by automation and is listed in the record with its rule id, not silently skipped. |
@@ -122,7 +131,7 @@ Four reads to resolve, one create, one CSA write, four adds, three verification 
 
 ## CSAs as the policy signal
 
-Custom Security Attributes are tenant-defined, typed, and readable only through a dedicated API, which makes them a better policy input than a free-text `department` or a group name. The policy declares two sets, `Employment` (`ContractType`, `CostCenter`) and `Compliance` (`DataClassification`, `LegalHold`), and uses them in four different ways across the scenarios.
+Custom Security Attributes are tenant-defined, typed, and readable only through a dedicated API, which makes them a better policy input than a free-text `department` or a group name. The policy declares two sets, `Employment` (`ContractType`, `CostCenter`) and `Compliance` (`DataClassification`, `LegalHold`), and uses them in five different ways across the scenarios.
 
 | Scenario | CSA | Policy path | Effect |
 |---|---|---|---|
@@ -132,6 +141,7 @@ Custom Security Attributes are tenant-defined, typed, and readable only through 
 | S3a | `Employment`, `Compliance` read for Adele | `customSecurityAttributes.trustOnlyDedicatedRead` | Read as part of the standard state capture; the deny comes from SOD-FIN-001, not from a CSA. |
 | S3b | `Employment.CostCenter` FIN-110 to ENG-210 | `moverRules.reevaluateHeldGroupCsaGates`, the same `requiresCsa` on Treasury-Payments | A group nobody asked to remove is removed because the gate that justified it no longer holds. The check row is `warn` with `csa_condition_failed`, and the removal is in the preview before anything is written. |
 | S4 | `Compliance.LegalHold = true` for Nestor | `offboardingOrder.deleteBlockedWhen` | Read with `attributeSets: ["Compliance"]` before planning. In `immediate` mode it is recorded; in `delete` mode it would deny the run with `delete_blocked_legal_hold` and zero writes. |
+| S4 | `Compliance.DataClassification = Restricted` for Nestor | `riskModel.signals[RS-13]` | The leaver run is classed high risk because the identity is flagged sensitive by a protected attribute, independently of the privileged group he also holds (RS-12). High risk means an approval reference and operator confirmation before any write. |
 
 CSA string values compare exactly (`evaluation.exactMatchSubjectPrefixes: ["csa."]`), unlike group names, because Entra stores them case-sensitively. `csa.effective` is the requested value when the record supplies one, otherwise the current tenant value, and `csa.current` comes only from `get_user_custom_security_attributes`.
 

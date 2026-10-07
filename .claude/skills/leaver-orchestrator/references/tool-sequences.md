@@ -1,6 +1,6 @@
 # leaver-orchestrator: tool sequences
 
-Exact argument shapes for every call, in order, plus the errors each can return. Tool names and schemas are those of `entra-scim-mcp` 0.2.1. Ids are placeholders; resolve them every run.
+Exact argument shapes for every call, in order, plus the errors each can return. Tool names and schemas are those of `entra-scim-mcp` 0.3.0. Ids are placeholders; resolve them every run.
 
 ## Resolve and read
 
@@ -86,7 +86,7 @@ Scheduled mode runs only call 6. Delete mode runs calls 5–9, then verification
 ### S4 — immediate, legal hold retained
 
 Record: target `nestor.wilke@contoso.local`, mode `immediate`, `effectiveDateTime 2026-09-20T09:00:00Z`, approval `REQ-50021` scope `run`.
-Calls 1–4. Held: All Employees (baseline), SG-Engineering-Users (business), SG-Engineering-ProdDeploy (privileged), SG-Legal-Hold (business). Retained: SG-Legal-Hold (RET-001, always). Removal order: SG-Engineering-ProdDeploy → SG-Engineering-Users → All Employees. Signals: RS-10 medium, RS-12 high (privileged holder) → risk high → approval `run` valid + operator confirmation. CSA: LegalHold true (recorded; irrelevant to immediate mode, would block delete). Calls 5–11. Verify residual == [SG-Legal-Hold], active false. Outcome `completed`, 11 calls. Residual risk: "SG-Legal-Hold retained under RET-001; release by Legal."
+Calls 1–4. Held: All Employees (baseline), SG-Engineering-Users (business), SG-Engineering-ProdDeploy (privileged), SG-Legal-Hold (business). Retained: SG-Legal-Hold (RET-001, always). Removal order: SG-Engineering-ProdDeploy → SG-Engineering-Users → All Employees. Signals: RS-10 medium, RS-12 high (privileged holder), RS-13 high (DataClassification Restricted) → risk high → approval `run` valid + operator confirmation. CSA: DataClassification Restricted (drives RS-13), LegalHold true (recorded; irrelevant to immediate mode, would block delete). Calls 5–11. Verify residual == [SG-Legal-Hold], active false. Outcome `completed`, 11 calls. Residual risk: "SG-Legal-Hold retained under RET-001; release by Legal."
 
 ### Scheduled
 

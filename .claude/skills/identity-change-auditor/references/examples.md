@@ -12,7 +12,7 @@ Full blocked-joiner example: `entra-lifecycle-policy/policy/decision-record.exam
   "skill": "joiner-orchestrator",
   "skillVersion": "0.1.0",
   "policyId": "contoso-lifecycle-policy",
-  "policyVersion": "1.0.0",
+  "policyVersion": "1.1.0",
   "event": "joiner",
   "host": "mcpjam",
   "dryRun": false,
@@ -25,7 +25,7 @@ Full blocked-joiner example: `entra-lifecycle-policy/policy/decision-record.exam
   "outcome": "completed",
   "riskLevel": "medium",
   "policyChecks": [
-    { "id": "CHK-01", "rule": "policyVersion", "input": "1.0.0", "evidence": "entra-lifecycle-policy skill", "result": "pass" },
+    { "id": "CHK-01", "rule": "policyVersion", "input": "1.1.0", "evidence": "entra-lifecycle-policy skill", "result": "pass" },
     { "id": "CHK-06", "rule": "requiredJoinerAttributes.customSecurityAttributes[REQ-CSA-03]", "subject": "csa.requested.Compliance.DataClassification", "input": "Confidential", "evidence": "source record; in allowedValues", "result": "pass" },
     { "id": "CHK-11", "rule": "groupCatalog[SG-Finance-Treasury-Payments].approvalRequired", "subject": "SG-Finance-Treasury-Payments", "input": "CHG-40012 scope group:SG-Finance-Treasury-Payments", "evidence": "source record approvals[0]; valid; used by call #10", "result": "needs_approval", "reasonCode": "approval_required" },
     { "id": "CHK-15", "rule": "namingStandards.userName", "input": "priya.natarajan@contoso.local", "evidence": "call #4: list_users userName eq -> 0 results", "result": "pass" },

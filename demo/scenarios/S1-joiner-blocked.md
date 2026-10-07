@@ -61,7 +61,7 @@ Onboard this new hire. Source record follows.
 ## What you should see
 
 1. The skill loads `entra-lifecycle-policy` (MCPJam: a `loadSkill` call, or nothing if you also picked the policy skill with `/`).
-2. A policy check table with `CHK-01` quoting `contoso-lifecycle-policy v1.0.0`, a `fail` row for `REQ-CSA-03`, and one row per requested group with the outcomes above.
+2. A policy check table with `CHK-01` quoting `contoso-lifecycle-policy v1.1.0`, a `fail` row for `REQ-CSA-03`, and one row per requested group with the outcomes above.
 3. No preview, no `approve` gate: the run is blocked before the resolve phase.
 4. A plain summary stating that nothing was created and why, then `Tool calls: 0 of 20`, then a fenced JSON decision record with `decision: deny`, `outcome: blocked`, `toolCalls.count: 0`, empty `executedActions`, and `skippedActions` entries for the two denied groups plus every planned write that was never attempted.
 

@@ -1,8 +1,8 @@
-# S3 — Mover: an SoD deny, then a transfer where a CSA strips an entitlement
+# S3 — Mover: an SoD deny, a transfer where a CSA strips an entitlement, and a low-risk change that needs no gate
 
 **Skill:** `mover-orchestrator`
-**Records:** `demo/source-records/S3a-adele-vance-sod.json`, `demo/source-records/S3b-lidia-holloway-transfer.json`
-**Precondition:** seeded mock with links applied (`npm run mock`, `npm run seed:links`).
+**Records:** `demo/source-records/S3a-adele-vance-sod.json`, `demo/source-records/S3b-lidia-holloway-transfer.json`, `demo/source-records/S3c-alex-wilber-title.json`
+**Precondition:** seeded mock with links applied (`npm run demo:up`).
 
 ## S3a — Adele requests SG-Finance-AP-Approvers
 
@@ -103,3 +103,38 @@ Trace checklist:
 - `remove_group_member` ×3 before `add_group_members` ×1.
 - No call touches `SG-Legal-Hold` or any group Lidia does not hold.
 - `mailNickname` and `userName` are never in a PATCH.
+
+## S3c — Alex's title change: low risk, straight through
+
+**Expected:** decision `allow`, outcome `completed`, about 6 tool calls, one write, **no approval reference and no `approve` turn**.
+
+The counterpart to S2 and S3b. Alex Wilber's job title changes from `Software Engineer` to `Senior Software Engineer` and nothing else: no department, manager, CSA or group change. Only `riskModel.signals[RS-08]` (`mover.attributeOnlyNonSensitive`, low) fires, so `approvalThresholds.decisionByRiskLevel.low` gives `allow` and `operatorConfirmRequired.low` is `false`. The skill still reads before it writes, still prints the check table and the preview, and still verifies, but the gate line reads `low risk, proceeding` and execution follows in the same turn. This is what "put the friction where the risk is" looks like: the governance is identical, the interruption is not.
+
+Prompt (after `/mover-orchestrator`):
+
+```
+Apply this title change.
+
+{
+  "sourceSystem": "workday",
+  "sourceRecordId": "WD-000108",
+  "eventType": "mover",
+  "effectiveDate": "2026-09-22",
+  "target": { "userName": "alex.wilber@contoso.local" },
+  "changes": {
+    "worker": { "jobTitle": "Senior Software Engineer" }
+  },
+  "previous": {
+    "worker": { "jobTitle": "Software Engineer" }
+  },
+  "requestedGroups": { "add": [], "remove": [] },
+  "approvals": []
+}
+```
+
+What you should see: `list_users` (Alex), `get_user` (title `Software Engineer`, matching `previous`), `get_user_custom_security_attributes`, `list_groups members.value` (two groups), and no catalog listing because nothing is added; a check table with RS-08 as the only risk signal and the aggregate row `decision = allow`, `risk = low`; a before → after line `title Software Engineer → Senior Software Engineer`; a preview with one `update_user` row (`replace title`) and one verification row; `Gate: low risk, proceeding`; then, in the same turn, the `update_user` call, a `get_user` showing the new title with `active` unchanged, the summary, `Tool calls: 6 of 20 (5 reads, 1 write)` and the record with `decision: allow`, `outcome: completed`, `riskLevel: low`, an empty `approvals` array and `details.before.title` / `details.after.title`.
+
+Trace checklist:
+- Exactly one write, `update_user`, with a single `replace` operation on `title`.
+- No `update_user_custom_security_attributes`, `remove_group_member` or `add_group_members`; no `list_groups` without a filter.
+- No turn break: the preview and the execution are in one assistant turn.

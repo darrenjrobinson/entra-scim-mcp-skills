@@ -4,7 +4,7 @@ description: "Produce the structured decision record (JSON plus a plain-language
 license: MIT
 compatibility: "No MCP calls. Requires the entra-lifecycle-policy skill for policy/decision-record.schema.json and the example record. Called by every other entra-lifecycle-guardrails skill as its final step. Works in MCPJam Inspector and Claude Code."
 metadata:
-  version: "0.1.0"
+  version: "0.2.0"
   author: darrenjrobinson
   product: entra-lifecycle-guardrails
   homepage: https://github.com/darrenjrobinson/entra-scim-mcp-skills
